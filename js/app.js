@@ -1,6 +1,8 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
 const TOKEN_KEY = 'cb_token';
+let RESET_TOKEN = '';        // set when arriving from a password-reset link
+let CAN_EMAIL_RESET = true;  // whether the server can send reset email at all
 let token = localStorage.getItem(TOKEN_KEY) || '';
 const API_BASE = (window.CB_API || '').replace(/\/$/, ''); // base URL of the Capital Book API
 let me = null;
@@ -80,11 +82,12 @@ async function loadMeta(){
   const m = await api('/contacts/meta');
   const fill=(sel,arr)=>{ arr.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); }); };
   fill($('fSeg'), m.segments); fill($('fCountry'), m.countries); fill($('fPri'), m.priorities); fill($('fTier'), m.tiers);
+  fill($('fSource'), m.sources || []);
   STATUS_OPTS.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; $('fStatus').appendChild(o); });
 }
 
 // ---------- list ----------
-const state = { q:'', segment:'', priority:'', country:'', tier:'', status:'', tag:'', owner:'', reachable:false, uhnw:false, institutional:false, flag:false, due:false, sort:'a', dir:'desc', page:1 };
+const state = { q:'', segment:'', priority:'', country:'', state:'', city:'', tier:'', status:'', tag:'', owner:'', source:'', reachable:false, uhnw:false, institutional:false, flag:false, due:false, noemail:false, nopipeline:false, sort:'a', dir:'desc', page:1 };
 const selected = new Set();
 let CAN_EDIT = false;
 let totalPages = 1;
@@ -92,8 +95,8 @@ let totalPages = 1;
 function buildQuery(){
   const p = new URLSearchParams();
   if(state.q) p.set('q', state.q);
-  for(const k of ['segment','priority','country','tier','status','tag','owner']) if(state[k]) p.set(k, state[k]);
-  for(const k of ['reachable','uhnw','institutional','flag','due']) if(state[k]) p.set(k,'true');
+  for(const k of ['segment','priority','country','state','city','tier','status','tag','owner','source']) if(state[k]) p.set(k, state[k]);
+  for(const k of ['reachable','uhnw','institutional','flag','due','noemail','nopipeline']) if(state[k]) p.set(k,'true');
   p.set('sort', state.sort); p.set('dir', state.dir);
   p.set('page', String(state.page)); p.set('pageSize','60');
   return p.toString();
@@ -138,11 +141,27 @@ let searchTimer=null;
 $('q').addEventListener('input', e => { clearTimeout(searchTimer); searchTimer=setTimeout(()=>{ state.q=e.target.value.trim(); resetAndLoad(); }, 250); });
 $('fSeg').onchange=e=>{ state.segment=e.target.value; resetAndLoad(); };
 $('fPri').onchange=e=>{ state.priority=e.target.value; resetAndLoad(); };
-$('fCountry').onchange=e=>{ state.country=e.target.value; resetAndLoad(); };
+$('fCountry').onchange=async e=>{
+  state.country=e.target.value;
+  state.state='';                      // a province from the old country would filter to nothing
+  state.city='';
+  await loadGeo();
+  resetAndLoad();
+};
+$('fState').onchange=async e=>{
+  state.state=e.target.value;
+  state.city='';                       // a city outside the new state would filter to nothing
+  await loadCities();
+  resetAndLoad();
+};
+$('fCity').onchange=e=>{ state.city=e.target.value; resetAndLoad(); };
 $('fTier').onchange=e=>{ state.tier=e.target.value; resetAndLoad(); };
 $('fStatus').onchange=e=>{ state.status=e.target.value; resetAndLoad(); };
 $('fTag').onchange=e=>{ state.tag=e.target.value; resetAndLoad(); };
 $('fOwner').onchange=e=>{ state.owner=e.target.value; resetAndLoad(); };
+$('fSource').onchange=e=>{ state.source=e.target.value; resetAndLoad(); };
+$('fNoEmail').onchange=e=>{ state.noemail=e.target.checked; resetAndLoad(); };
+$('fNoPipe').onchange=e=>{ state.nopipeline=e.target.checked; resetAndLoad(); };
 $('fReach').onchange=e=>{ state.reachable=e.target.checked; resetAndLoad(); };
 $('fUhnw').onchange=e=>{ state.uhnw=e.target.checked; resetAndLoad(); };
 $('fInst').onchange=e=>{ state.institutional=e.target.checked; resetAndLoad(); };
@@ -151,8 +170,9 @@ $('fDue').onchange=e=>{ state.due=e.target.checked; resetAndLoad(); };
 $('sortSel').onchange=e=>{ state.sort=e.target.value; resetAndLoad(); };
 $('dirBtn').onclick=()=>{ state.dir = state.dir==='desc'?'asc':'desc'; $('dirBtn').textContent=state.dir; resetAndLoad(); };
 $('resetBtn').onclick=()=>{
-  Object.assign(state,{q:'',segment:'',priority:'',country:'',tier:'',status:'',tag:'',owner:'',reachable:false,uhnw:false,institutional:false,flag:false,due:false,page:1});
+  Object.assign(state,{q:'',segment:'',priority:'',country:'',state:'',city:'',tier:'',status:'',tag:'',owner:'',reachable:false,uhnw:false,institutional:false,flag:false,due:false,page:1});
   $('q').value=''; ['fSeg','fPri','fCountry','fTier','fStatus','fTag','fOwner'].forEach(id=>$(id).value='');
+  loadGeo();
   ['fReach','fUhnw','fInst','fFlag','fDue'].forEach(id=>$(id).checked=false);
   loadPage(false);
 };
@@ -200,10 +220,23 @@ async function openDetail(id){
          ${field('Source', c.source_list)} ${field('Client types', c.client_types)}
        </div>
        ${c.data_flags ? `<div class="dr-flag">${esc(c.data_flags)}</div>` : ''}
+       <div class="ppl">
+         <h4>People at this firm</h4>
+         <div id="drPeople" class="ppl-list"></div>
+         ${canEdit ? `<div class="ppl-add">
+           <input id="ppName" placeholder="Name">
+           <input id="ppRole" placeholder="Role (assistant, branch manager...)">
+           <input id="ppEmail" type="email" placeholder="Email">
+           <input id="ppPhone" placeholder="Phone">
+           <button id="ppAdd" class="sf-btn primary">Add</button>
+         </div>` : ''}
+         <div id="ppMsg" class="sf-msg"></div>
+       </div>
        ${pipeHtml}
        <div id="actsWrap"></div>
      </div>`;
   $('drClose').onclick=closeDrawer;
+  loadPeople(c.id, canEdit);
   if(canEdit){
     let chosen=p.status;
     $('statuses').querySelectorAll('.sbtn').forEach(b=>{ b.onclick=()=>{
@@ -271,12 +304,29 @@ async function openDash(){
 
 // ---------- boot ----------
 (async function boot(){
+  const resetToken = new URLSearchParams(location.search).get('reset');
+  if(resetToken){
+    RESET_TOKEN = resetToken;
+    history.replaceState({}, '', location.pathname);   // keep the token out of history
+    showLoginView('reset');
+    $('login').style.display='flex';
+    return;
+  }
   if(token){
     try{ const r=await api('/auth/me'); me=r.user; await enterApp(); return; }
     catch{ token=''; localStorage.removeItem(TOKEN_KEY); }
   }
   $('login').style.display='flex';
+  applyPolicy();
 })();
+
+async function applyPolicy(){
+  try{
+    const p = await api('/auth/policy');
+    $('liRegWrap').classList.toggle('hidden', !p.allowRegistration);
+    CAN_EMAIL_RESET = !!p.canEmailReset;
+  }catch(e){}
+}
 
 // ========== increment 2: export, tasks, import, activities, contact edit ==========
 
@@ -552,12 +602,26 @@ async function loadUsers(){
     const row=document.createElement('div'); row.className='urow';
     const isMe = me && u.email===me.email;
     row.innerHTML=`<div class="uinfo"><div class="uname">${esc(u.name||u.email)}</div><div class="uemail">${esc(u.email)}</div></div>`+
-      (isMe?'<span class="ume">you</span>':`<select data-uid="${u.id}"><option value="viewer">viewer</option><option value="editor">editor</option><option value="admin">admin</option></select>`);
+      (isMe?'<span class="ume">you</span>':`<select data-uid="${u.id}"><option value="viewer">viewer</option><option value="editor">editor</option><option value="admin">admin</option></select>`)+
+      `<button class="urow-act" data-act="pw">Set password</button>`+
+      (isMe?'':`<button class="urow-act danger" data-act="del">Remove</button>`);
     list.appendChild(row);
     if(!isMe){ const sel=row.querySelector('select'); sel.value=u.role; sel.onchange=async()=>{
-      try{ await api('/auth/users/'+u.id+'/role',{method:'PATCH',body:JSON.stringify({role:sel.value})}); flashBulk(`${u.email} is now ${sel.value}`); }
-      catch(e){ flashBulk(e.message||'Update failed', true); sel.value=u.role; }
+      try{ await api('/auth/users/'+u.id+'/role',{method:'PATCH',body:JSON.stringify({role:sel.value})}); uMsg(`${u.email} is now ${sel.value}`); }
+      catch(e){ uMsg(e.message||'Update failed', true); sel.value=u.role; }
     }; }
+    row.querySelector('[data-act="pw"]').onclick=async()=>{
+      const pw=prompt(`Set a new password for ${u.email} (at least 8 characters). Give it to them directly; they can change it under Account.`);
+      if(!pw) return;
+      try{ await api('/auth/users/'+u.id+'/password',{method:'POST',body:JSON.stringify({password:pw})}); uMsg(`Password set for ${u.email}.`); }
+      catch(e){ uMsg(e.message||'Could not set that password.', true); }
+    };
+    const delBtn=row.querySelector('[data-act="del"]');
+    if(delBtn) delBtn.onclick=async()=>{
+      if(!confirm(`Remove ${u.email}? Contacts they own become unowned, and their pipeline entries are deleted. This cannot be undone.`)) return;
+      try{ await api('/auth/users/'+u.id,{method:'DELETE'}); uMsg(`${u.email} removed.`); await loadUsers(); }
+      catch(e){ uMsg(e.message||'Could not remove that user.', true); }
+    };
   });
 }
 $('usersBtn').onclick=openUsers;
@@ -623,3 +687,205 @@ async function loadFeed(){
 $('feedBtn').onclick=openFeed;
 $('feedClose').onclick=()=>$('feedModal').classList.add('hidden');
 $('feedModal').onclick=e=>{ if(e.target===$('feedModal')) $('feedModal').classList.add('hidden'); };
+
+// ---------- password reset (sign-in screen) ----------
+function loginMsg(err, ok){
+  $('liErr').textContent = err || '';
+  $('liOk').textContent = ok || '';
+}
+function showLoginView(view){
+  loginMsg('', '');
+  $('liMain').classList.toggle('hidden', view!=='main');
+  $('liForgot').classList.toggle('hidden', view!=='forgot');
+  $('liReset').classList.toggle('hidden', view!=='reset');
+}
+$('liForgotLink').onclick = ()=>{ $('fpEmail').value = $('liEmail').value.trim(); showLoginView('forgot'); };
+$('fpBack').onclick = ()=>showLoginView('main');
+$('rsBack').onclick = ()=>{ RESET_TOKEN=''; showLoginView('main'); };
+
+$('fpBtn').onclick = async()=>{
+  const email = $('fpEmail').value.trim();
+  if(!email){ loginMsg('Enter your email address.'); return; }
+  loginMsg('', 'Sending...');
+  try{
+    const r = await api('/auth/forgot', { method:'POST', body: JSON.stringify({ email }) });
+    loginMsg('', r.message || 'If that address has an account, a reset link is on its way.');
+  }catch(e){
+    loginMsg(e.message || 'Could not send a reset link.');
+  }
+};
+$('fpEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') $('fpBtn').click(); });
+
+$('rsBtn').onclick = async()=>{
+  const a = $('rsPass').value, b = $('rsPass2').value;
+  if(a.length < 8){ loginMsg('Password must be at least 8 characters.'); return; }
+  if(a !== b){ loginMsg('Those passwords do not match.'); return; }
+  try{
+    await api('/auth/reset', { method:'POST', body: JSON.stringify({ token: RESET_TOKEN, password: a }) });
+    RESET_TOKEN=''; $('rsPass').value=''; $('rsPass2').value='';
+    showLoginView('main');
+    loginMsg('', 'Password updated. Sign in with your new password.');
+  }catch(e){
+    loginMsg(e.message || 'That reset link is invalid or has expired.');
+  }
+};
+$('rsPass2').addEventListener('keydown', e=>{ if(e.key==='Enter') $('rsBtn').click(); });
+
+// ---------- account: change your own password ----------
+function pwMsg(t, err){ const m=$('pwMsg'); m.textContent=t||''; m.className='sf-msg'+(t?(err?' err':' ok'):''); }
+$('acctBtn').onclick = ()=>{
+  pwMsg('');
+  $('acctInfo').textContent = me ? `${me.email} \u00b7 ${me.role}` : '';
+  ['pwCur','pwNew','pwConf'].forEach(id=>$(id).value='');
+  $('acctModal').classList.remove('hidden');
+};
+$('acctClose').onclick = ()=>$('acctModal').classList.add('hidden');
+$('acctModal').onclick = e=>{ if(e.target===$('acctModal')) $('acctModal').classList.add('hidden'); };
+$('pwSave').onclick = async()=>{
+  const cur=$('pwCur').value, nw=$('pwNew').value, cf=$('pwConf').value;
+  if(!cur){ pwMsg('Enter your current password.', true); return; }
+  if(nw.length<8){ pwMsg('New password must be at least 8 characters.', true); return; }
+  if(nw!==cf){ pwMsg('Those passwords do not match.', true); return; }
+  try{
+    await api('/auth/password', { method:'POST', body: JSON.stringify({ currentPassword: cur, newPassword: nw }) });
+    ['pwCur','pwNew','pwConf'].forEach(id=>$(id).value='');
+    pwMsg('Password updated.');
+  }catch(e){ pwMsg(e.message || 'Could not update password.', true); }
+};
+
+// ---------- admin: add and remove users ----------
+function uMsg(t, err){ const m=$('uMsg'); m.textContent=t||''; m.className='sf-msg'+(t?(err?' err':' ok'):''); }
+$('uaAdd').onclick = async()=>{
+  const name=$('uaName').value.trim(), email=$('uaEmail').value.trim(),
+        password=$('uaPass').value, role=$('uaRole').value;
+  if(!email || password.length<8){ uMsg('Email and a password of at least 8 characters are required.', true); return; }
+  try{
+    await api('/auth/users', { method:'POST', body: JSON.stringify({ name, email, password, role }) });
+    ['uaName','uaEmail','uaPass'].forEach(id=>$(id).value='');
+    uMsg(`${email} added as ${role}.`);
+    await loadUsers();
+  }catch(e){ uMsg(e.message || 'Could not add that user.', true); }
+};
+
+// ---------- geography cascade: country -> province/state -> city ----------
+// 54 US states and 550 cities across the book, so each list is scoped to what
+// sits above it. Nothing below Country is selectable until a country is chosen,
+// and changing a level clears everything under it, so a stale filter can never
+// silently return zero rows.
+
+function setSel(sel, placeholder, items, chosen){
+  sel.innerHTML = '';
+  sel.appendChild(new Option(placeholder, ''));
+  (items || []).forEach(i => sel.appendChild(new Option(`${i.name} (${i.count})`, i.name)));
+  sel.disabled = !items || !items.length;
+  sel.value = chosen || '';
+}
+
+// city list depends on the country and, when set, the province/state
+async function loadCities(){
+  const sel = $('fCity');
+  if(!state.country){
+    sel.innerHTML=''; sel.appendChild(new Option('Select a country first',''));
+    sel.disabled = true; sel.value=''; return;
+  }
+  sel.disabled = true;
+  try{
+    const p = new URLSearchParams({ country: state.country });
+    if(state.state) p.set('state', state.state);
+    const m = await api('/contacts/meta?' + p.toString());
+    if(m.cities === undefined){
+      sel.innerHTML=''; sel.appendChild(new Option('API is out of date, restart it',''));
+      sel.disabled = true; sel.value='';
+      console.warn('Capital Book: /contacts/meta returned no "cities" key. The API is running an older build than this frontend.');
+      return;
+    }
+    const scope = state.state || state.country;
+    setSel(sel, `All cities in ${scope}`, m.cities, state.city);
+  }catch(e){
+    sel.innerHTML=''; sel.appendChild(new Option('Could not load cities',''));
+    sel.disabled = true;
+  }
+}
+
+// refresh both levels below Country
+async function loadGeo(){
+  const st = $('fState');
+  if(!state.country){
+    st.innerHTML=''; st.appendChild(new Option('Select a country first',''));
+    st.disabled = true; st.value='';
+    await loadCities();
+    return;
+  }
+  st.disabled = true;
+  try{
+    const m = await api('/contacts/meta?country=' + encodeURIComponent(state.country));
+    if(m.states === undefined){
+      // The API answered, but with no `states` key at all. That is not a data
+      // problem, it is an out-of-date backend still serving the old /meta shape.
+      st.innerHTML=''; st.appendChild(new Option('API is out of date, restart it',''));
+      st.disabled = true; st.value='';
+      console.warn('Capital Book: /contacts/meta returned no "states" key. The API is running an older build than this frontend. Redeploy and restart the backend.');
+    } else if(!m.states.length){
+      // The API is current; this country genuinely has no province recorded.
+      st.innerHTML=''; st.appendChild(new Option(`No provinces recorded for ${state.country}`,''));
+      st.disabled = true; st.value='';
+    } else {
+      setSel(st, `All provinces in ${state.country}`, m.states, state.state);
+    }
+  }catch(e){
+    st.innerHTML=''; st.appendChild(new Option('Could not load provinces',''));
+    st.disabled = true;
+  }
+  await loadCities();
+}
+
+// ---------- people at the firm (assistants, associates, branch managers) ----------
+function ppMsg(t, err){ const m=$('ppMsg'); if(!m) return; m.textContent=t||''; m.className='sf-msg'+(t?(err?' err':' ok'):''); }
+
+async function loadPeople(contactId, canEdit){
+  const wrap = $('drPeople');
+  if(!wrap) return;
+  try{
+    const d = await api('/contacts/'+contactId+'/people');
+    if(!d.people.length){
+      wrap.innerHTML = '<div class="ppl-empty">Nobody else recorded yet. Add the assistant, the associate, or whoever else you deal with here.</div>';
+    } else {
+      wrap.innerHTML = d.people.map(pn=>{
+        const bits = [pn.role, pn.phone].filter(Boolean).join(' \u00b7 ');
+        return `<div class="ppl-row" data-pid="${pn.id}">`+
+          `<div class="ppl-main"><div class="ppl-name">${esc(pn.name)}</div>`+
+          (bits?`<div class="ppl-meta">${esc(bits)}</div>`:'')+
+          (pn.email?`<a class="ppl-email" href="mailto:${esc(pn.email)}">${esc(pn.email)}</a>`:'')+
+          `</div>`+
+          (canEdit?`<button class="ppl-del" data-pid="${pn.id}" title="Remove">&times;</button>`:'')+
+        `</div>`;
+      }).join('');
+      if(canEdit){
+        wrap.querySelectorAll('.ppl-del').forEach(b=>{
+          b.onclick = async()=>{
+            const pid = b.dataset.pid;
+            if(!confirm('Remove this person?')) return;
+            try{ await api('/contacts/'+contactId+'/people/'+pid, {method:'DELETE'});
+                 await loadPeople(contactId, canEdit); ppMsg('Removed.'); }
+            catch(e){ ppMsg(e.message||'Could not remove.', true); }
+          };
+        });
+      }
+    }
+  }catch(e){ wrap.innerHTML = '<div class="ppl-empty">Could not load people.</div>'; }
+
+  const addBtn = $('ppAdd');
+  if(addBtn){
+    addBtn.onclick = async()=>{
+      const name=$('ppName').value.trim(), role=$('ppRole').value.trim(),
+            email=$('ppEmail').value.trim(), phone=$('ppPhone').value.trim();
+      if(!name){ ppMsg('A name is required.', true); return; }
+      try{
+        await api('/contacts/'+contactId+'/people', {method:'POST', body: JSON.stringify({name, role, email, phone})});
+        ['ppName','ppRole','ppEmail','ppPhone'].forEach(id=>$(id).value='');
+        await loadPeople(contactId, canEdit);
+        ppMsg(`${name} added.`);
+      }catch(e){ ppMsg(e.message||'Could not add that person.', true); }
+    };
+  }
+}

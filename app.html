@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Capital Book - App</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css">
@@ -14,18 +17,38 @@
 <div id="login" class="login">
   <div class="login-card">
     <div class="brand"><span class="spine"></span><div><h1>Capital Book</h1><p>Wealth &amp; Institutional CRM</p></div></div>
-    <label>Email</label>
-    <input id="liEmail" type="email" autocomplete="username" placeholder="admin@capitalbook.local" value="admin@capitalbook.local">
-    <label>Password</label>
-    <input id="liPass" type="password" autocomplete="current-password" placeholder="Password" value="CapitalBook2026">
-    <button id="liBtn">Sign in</button>
-    <div id="liErr" class="login-err"></div>
-    <div class="login-foot">
-      <span id="liToggleText">No account?</span> <a id="liToggle">Create one</a><br>
-      Demo Accounts: admin@capitalbook.local / editor@capitalbook.local / viewer@capitalbook.local<br>
-      <a href="index.html" style="color:var(--brass)">Pwrd: CapitalBook2026</a><br>
-      <a href="index.html" style="color:var(--brass)">Back to overview</a>
+    <div id="liMain">
+      <label>Email</label>
+      <input id="liEmail" type="email" autocomplete="username" placeholder="you@ninepoint.com">
+      <label>Password</label>
+      <input id="liPass" type="password" autocomplete="current-password" placeholder="Password">
+      <button id="liBtn">Sign in</button>
+      <div class="login-foot">
+        <a id="liForgotLink">Forgot password?</a>
+        <span id="liRegWrap" class="hidden"> &middot; <span id="liToggleText">No account?</span> <a id="liToggle">Create one</a></span>
+      </div>
     </div>
+
+    <div id="liForgot" class="hidden">
+      <label>Email</label>
+      <input id="fpEmail" type="email" autocomplete="username" placeholder="you@ninepoint.com">
+      <button id="fpBtn">Send reset link</button>
+      <div class="login-foot"><a id="fpBack">Back to sign in</a></div>
+    </div>
+
+    <div id="liReset" class="hidden">
+      <div class="modal-sub" style="margin-bottom:10px">Choose a new password for your account.</div>
+      <label>New password</label>
+      <input id="rsPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+      <label>Confirm new password</label>
+      <input id="rsPass2" type="password" autocomplete="new-password" placeholder="Repeat it">
+      <button id="rsBtn">Set new password</button>
+      <div class="login-foot"><a id="rsBack">Back to sign in</a></div>
+    </div>
+
+    <div id="liErr" class="login-err"></div>
+    <div id="liOk" class="login-ok"></div>
+    <div class="login-foot"><a href="index.html" style="color:var(--brass)">Back to overview</a></div>
   </div>
 </div>
 
@@ -43,6 +66,7 @@
     <button id="importBtn" class="tb-btn hidden">Import</button>
     <button id="tplBtn" class="tb-btn hidden">Templates</button>
     <button id="usersBtn" class="tb-btn hidden">Users</button>
+    <button id="acctBtn" class="tb-btn">Account</button>
     <button id="dashBtn" class="tb-btn">Dashboard</button>
     <div class="tb-user"><span id="userEmail"></span><span id="userRole" class="tb-role"></span></div>
     <button id="logoutBtn" class="tb-btn">Sign out</button>
@@ -53,9 +77,12 @@
       <h3>Saved views</h3>
       <select id="viewSel"><option value="">Apply a saved view…</option></select>
       <button class="reset" id="saveViewBtn" style="margin-top:6px">Save current view</button>
+      <h3>List</h3><select id="fSource"><option value="">All lists</option></select>
       <h3>Segment</h3><select id="fSeg"><option value="">All segments</option></select>
       <h3>Priority</h3><select id="fPri"><option value="">All priorities</option></select>
       <h3>Country</h3><select id="fCountry"><option value="">All countries</option></select>
+      <h3>Province / State</h3><select id="fState" disabled><option value="">Select a country first</option></select>
+      <h3>City</h3><select id="fCity" disabled><option value="">Select a country first</option></select>
       <h3>AUM tier</h3><select id="fTier"><option value="">All tiers</option></select>
       <h3>Pipeline status</h3><select id="fStatus"><option value="">Any status</option></select>
       <h3>Tag</h3><select id="fTag"><option value="">All tags</option></select>
@@ -66,6 +93,8 @@
       <label class="chk"><input type="checkbox" id="fInst"> Institutional</label>
       <label class="chk"><input type="checkbox" id="fFlag"> Has data flag</label>
       <label class="chk"><input type="checkbox" id="fDue"> Follow-ups due</label>
+      <label class="chk"><input type="checkbox" id="fNoEmail"> No email on file</label>
+      <label class="chk"><input type="checkbox" id="fNoPipe"> Not in my pipeline</label>
       <button class="reset" id="resetBtn">Reset filters</button>
     </aside>
 
@@ -177,8 +206,33 @@
   <div class="modal-card">
     <button class="modal-close" id="usersClose">&times;</button>
     <h2>Team members</h2>
-    <div class="modal-sub">Set each person's access level. New users register at the sign-in screen as viewers; promote them here. <b>admin</b> manages users and data, <b>editor</b> writes pipeline, activities, tasks, tags, and templates, <b>viewer</b> is read-only.</div>
+    <div class="modal-sub">Self-registration is off: add people here. <b>admin</b> manages users and data, <b>editor</b> writes pipeline, activities, tasks, tags, and templates, <b>viewer</b> is read-only.</div>
+    <div class="uadd">
+      <input id="uaName" placeholder="Name">
+      <input id="uaEmail" type="email" placeholder="name@ninepoint.com">
+      <input id="uaPass" type="password" placeholder="Temporary password">
+      <select id="uaRole"><option value="viewer">viewer</option><option value="editor">editor</option><option value="admin">admin</option></select>
+      <button id="uaAdd" class="sf-btn primary">Add user</button>
+    </div>
+    <div id="uMsg" class="sf-msg"></div>
     <div id="usersList"></div>
+  </div>
+</div>
+
+<!-- ACCOUNT MODAL -->
+<div id="acctModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="acctClose">&times;</button>
+    <h2>Account</h2>
+    <div class="modal-sub" id="acctInfo"></div>
+    <h3 class="sf-h">Change password</h3>
+    <div class="sf-grid" style="grid-template-columns:1fr">
+      <label>Current password<input id="pwCur" type="password" autocomplete="current-password"></label>
+      <label>New password<input id="pwNew" type="password" autocomplete="new-password" placeholder="At least 8 characters"></label>
+      <label>Confirm new password<input id="pwConf" type="password" autocomplete="new-password"></label>
+    </div>
+    <div class="sf-actions"><button id="pwSave" class="sf-btn primary">Update password</button></div>
+    <div id="pwMsg" class="sf-msg"></div>
   </div>
 </div>
 
