@@ -28,11 +28,15 @@ function buildFilter(req: any): { whereSql: string; params: unknown[] } {
   const params: unknown[] = [];
   const term = String(req.query.q || '').trim().toLowerCase();
   if (term) {
-    where.push('(LOWER(c.name) LIKE ? OR LOWER(c.firm) LIKE ? OR LOWER(c.email) LIKE ? OR LOWER(c.city) LIKE ?)');
+    where.push(
+      `(LOWER(c.name) LIKE ? OR LOWER(c.firm) LIKE ? OR LOWER(c.email) LIKE ? OR LOWER(c.city) LIKE ?
+        OR EXISTS (SELECT 1 FROM contact_people cp WHERE cp.contact_id = c.id
+                   AND (LOWER(cp.name) LIKE ? OR LOWER(cp.email) LIKE ?)))`
+    );
     const like = '%' + term + '%';
-    params.push(like, like, like, like);
+    params.push(like, like, like, like, like, like);
   }
-  for (const [param, col] of [['segment', 'c.segment'], ['priority', 'c.priority'], ['country', 'c.country'], ['tier', 'c.aum_tier'], ['source', 'c.source_list']] as const) {
+  for (const [param, col] of [['segment', 'c.segment'], ['priority', 'c.priority'], ['country', 'c.country'], ['state', 'c.state'], ['city', 'c.city'], ['tier', 'c.aum_tier'], ['source', 'c.source_list']] as const) {
     const v = req.query[param];
     if (v) { where.push(`${col} = ?`); params.push(String(v)); }
   }
@@ -40,6 +44,10 @@ function buildFilter(req: any): { whereSql: string; params: unknown[] } {
     if (req.query[param] === 'true' || req.query[param] === '1') where.push(`${col} = 1`);
   }
   if (req.query.flag === 'true' || req.query.flag === '1') where.push("c.data_flags <> ''");
+  // no email at all: 626 of the book. These are the ones you cannot reach.
+  if (req.query.noemail === 'true' || req.query.noemail === '1') where.push("(c.email IS NULL OR c.email = '')");
+  // never entered your pipeline: the untouched names
+  if (req.query.nopipeline === 'true' || req.query.nopipeline === '1') where.push('p.status IS NULL');
   if (req.query.status) { where.push('p.status = ?'); params.push(String(req.query.status)); }
   if (req.query.due === 'true' || req.query.due === '1') where.push("p.due IS NOT NULL AND p.due <> '' AND p.due <= CURDATE()");
   if (req.query.tag) { where.push('c.id IN (SELECT contact_id FROM contact_tags WHERE tag_id = ?)'); params.push(Number(req.query.tag)); }
@@ -80,12 +88,40 @@ contactsRouter.get('/', requireAuth, async (req, res) => {
 });
 
 // distinct filter option values
-contactsRouter.get('/meta', requireAuth, async (_req, res) => {
+contactsRouter.get('/meta', requireAuth, async (req, res) => {
   const distinct = async (col: string) =>
     (await q<{ v: string }>(`SELECT DISTINCT ${col} AS v FROM contacts WHERE ${col} <> '' ORDER BY v`)).map((r) => r.v);
+
+  // Geography narrows in three steps: country -> province/state -> city. There
+  // are 54 US states and 550 cities across the book, so each list is scoped to
+  // what sits above it rather than shown all at once. Ordered by size then name,
+  // so the places you actually cover lead the dropdown.
+  const country = req.query.country ? String(req.query.country) : '';
+  const stateSel = req.query.state ? String(req.query.state) : '';
+
+  const states = await q<{ v: string; n: number }>(
+    `SELECT state AS v, COUNT(*) AS n FROM contacts
+      WHERE state <> ''${country ? ' AND country = ?' : ''}
+      GROUP BY state ORDER BY n DESC, v ASC`,
+    country ? [country] : []
+  );
+
+  const cityWhere: string[] = ["city <> ''"];
+  const cityParams: unknown[] = [];
+  if (country) { cityWhere.push('country = ?'); cityParams.push(country); }
+  if (stateSel) { cityWhere.push('state = ?'); cityParams.push(stateSel); }
+  const cities = await q<{ v: string; n: number }>(
+    `SELECT city AS v, COUNT(*) AS n FROM contacts
+      WHERE ${cityWhere.join(' AND ')}
+      GROUP BY city ORDER BY n DESC, v ASC`,
+    cityParams
+  );
+
   return res.json({
     segments: await distinct('segment'), countries: await distinct('country'), tiers: await distinct('aum_tier'),
     priorities: await distinct('priority'), sources: await distinct('source_list'),
+    states: states.map((r) => ({ name: r.v, count: Number(r.n) })),
+    cities: cities.map((r) => ({ name: r.v, count: Number(r.n) })),
   });
 });
 
@@ -342,3 +378,62 @@ function csvToObjects(text: string): Record<string, unknown>[] {
   }
   return out;
 }
+
+
+// ---------------------------------------------------------------------------
+// People attached to a contact: assistants, associates, branch managers. The
+// contact keeps one primary email; these are everyone else you deal with at
+// that firm. They are searchable from the main search box.
+// ---------------------------------------------------------------------------
+const personSchema = z.object({
+  name: z.string().min(1).max(255),
+  role: z.string().max(120).optional().default(''),
+  email: z.string().email().or(z.literal('')).optional().default(''),
+  phone: z.string().max(60).optional().default(''),
+});
+
+contactsRouter.get('/:id/people', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const people = await q(
+    'SELECT id, contact_id, name, role, email, phone, created_at FROM contact_people WHERE contact_id = ? ORDER BY id',
+    [id]
+  );
+  return res.json({ people });
+});
+
+contactsRouter.post('/:id/people', requireAuth, requireRole('editor'), async (req, res) => {
+  const id = Number(req.params.id);
+  const contact = await one('SELECT id FROM contacts WHERE id = ?', [id]);
+  if (!contact) return res.status(404).json({ error: 'Contact not found' });
+  const parsed = personSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+  const { name, role, email, phone } = parsed.data;
+  const info = await run(
+    'INSERT INTO contact_people (contact_id, name, role, email, phone) VALUES (?, ?, ?, ?, ?)',
+    [id, name, role, email.toLowerCase().trim(), phone]
+  );
+  await writeAudit(req.user, 'person_add', 'contact', id, { person: name });
+  return res.status(201).json({ person: await one('SELECT * FROM contact_people WHERE id = ?', [info.insertId]) });
+});
+
+contactsRouter.patch('/:id/people/:pid', requireAuth, requireRole('editor'), async (req, res) => {
+  const pid = Number(req.params.pid);
+  const person = await one<{ id: number; contact_id: number }>('SELECT id, contact_id FROM contact_people WHERE id = ?', [pid]);
+  if (!person) return res.status(404).json({ error: 'Person not found' });
+  const parsed = personSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+  const { name, role, email, phone } = parsed.data;
+  await run('UPDATE contact_people SET name = ?, role = ?, email = ?, phone = ? WHERE id = ?',
+    [name, role, email.toLowerCase().trim(), phone, pid]);
+  await writeAudit(req.user, 'person_update', 'contact', person.contact_id, { person: name });
+  return res.json({ person: await one('SELECT * FROM contact_people WHERE id = ?', [pid]) });
+});
+
+contactsRouter.delete('/:id/people/:pid', requireAuth, requireRole('editor'), async (req, res) => {
+  const pid = Number(req.params.pid);
+  const person = await one<{ id: number; contact_id: number; name: string }>('SELECT id, contact_id, name FROM contact_people WHERE id = ?', [pid]);
+  if (!person) return res.status(404).json({ error: 'Person not found' });
+  await run('DELETE FROM contact_people WHERE id = ?', [pid]);
+  await writeAudit(req.user, 'person_remove', 'contact', person.contact_id, { person: person.name });
+  return res.json({ ok: true });
+});

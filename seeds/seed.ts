@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { pool, closePool, one } from '../src/db.js';
+import { randomBytes } from 'node:crypto';
 import { hashPassword } from '../src/auth.js';
+import { seedUsers } from './users.js';
+import type { Role } from '../src/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -13,22 +16,6 @@ const CONTACT_COLS = [
   'client_types', 'reachable', 'source_list', 'data_flags',
 ];
 
-async function seedUsers() {
-  const pw = process.env.SEED_ADMIN_PASSWORD || 'CapitalBook2026';
-  const hash = hashPassword(pw);
-  const accounts = [
-    ['admin@capitalbook.local', 'Admin', 'admin'],
-    ['editor@capitalbook.local', 'Editor', 'editor'],
-    ['viewer@capitalbook.local', 'Viewer', 'viewer'],
-  ];
-  for (const [email, name, role] of accounts) {
-    await pool.query(
-      'INSERT IGNORE INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-      [email, hash, name, role]
-    );
-  }
-  console.log(`Seeded ${accounts.length} accounts (password: ${pw}).`);
-}
 
 async function seedTemplates() {
   const admin = await one<{ id: number }>("SELECT id FROM users WHERE email = 'admin@capitalbook.local'");

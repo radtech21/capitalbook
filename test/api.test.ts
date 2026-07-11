@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import mysql from 'mysql2/promise';
 import { createApp } from '../src/app.js';
-import { pool, one, run, closePool } from '../src/db.js';
+import { pool, q, one, run, closePool } from '../src/db.js';
 import { hashPassword } from '../src/auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -20,8 +20,13 @@ const CONTACT_COLS = ['id','name','title','firm','segment','priority','lead_scor
 const TABLES = ['audit_log','contact_tags','tags','saved_views','templates','tasks','activities','pipeline','contacts','users'];
 
 beforeAll(async () => {
-  // Ensure the test database exists with the current schema, then start clean.
-  const ddl = readFileSync(join(__dirname, '..', 'migrations', '001_init.sql'), 'utf8');
+  // The suite exercises registration, which is disabled by default in the app.
+  process.env.ALLOW_REGISTRATION = 'true';
+  // Ensure the test database exists with the CURRENT schema (every migration,
+  // in order, exactly as the app applies them), then start clean.
+  const migDir = join(__dirname, '..', 'migrations');
+  const ddl = readdirSync(migDir).filter((f) => f.endsWith('.sql')).sort()
+    .map((f) => readFileSync(join(migDir, f), 'utf8')).join('\n');
   const dbName = process.env.DB_NAME || 'capitalbook_test';
   const root = await mysql.createConnection({
     host: process.env.DB_HOST || '127.0.0.1',
@@ -30,7 +35,8 @@ beforeAll(async () => {
     password: process.env.DB_PASSWORD || 'cbpass',
     multipleStatements: true,
   });
-  await root.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await root.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
+  await root.query(`CREATE DATABASE \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await root.query(`USE \`${dbName}\``);
   await root.query(ddl);
   await root.end();
@@ -590,5 +596,396 @@ describe('ownership and team feed', () => {
     const res = await request(app).get('/api/dashboard/stats').set('Authorization', `Bearer ${editorToken}`);
     expect(res.body).toHaveProperty('assignedToMe');
     expect(res.body.assignedToMe).toBeGreaterThanOrEqual(1);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Password reset, account management, and the region filter.
+// The reset flow is exercised against a real in-process SMTP server, so the
+// link under test is the one that actually goes out on the wire.
+// ---------------------------------------------------------------------------
+// MIME bodies are quoted-printable: soft line breaks are "=\r\n" and a literal
+// "=" is encoded as "=3D". Decode before reading the link out of the message.
+const decodeMail = (raw: string) => raw.replace(/=\r?\n/g, '').replace(/=3D/gi, '=');
+
+describe('password reset from the sign-in screen', () => {
+  let smtp: any;
+  let mails: Array<{ to: string[]; raw: string }> = [];
+  let uid = 0;
+  const EMAIL = 'reset.subject@ninepoint.com';
+
+  beforeAll(async () => {
+    const { SMTPServer } = await import('smtp-server' as any) as any;
+    smtp = new SMTPServer({
+      authOptional: true, disabledCommands: ['STARTTLS'],
+      onData(stream: any, session: any, cb: any) {
+        let raw = '';
+        stream.on('data', (c: any) => (raw += c.toString('utf8')));
+        stream.on('end', () => { mails.push({ to: session.envelope.rcptTo.map((r: any) => r.address), raw }); cb(); });
+      },
+    });
+    await new Promise<void>((r) => smtp.listen(0, '127.0.0.1', () => r()));
+    const port = smtp.server.address().port;
+    process.env.SMTP_HOST = '127.0.0.1';
+    process.env.SMTP_PORT = String(port);
+    process.env.SMTP_SECURE = 'false';
+    process.env.SMTP_FROM = 'Capital Book <no-reply@ninepoint.com>';
+    process.env.APP_URL = 'http://localhost:5173';
+    delete process.env.SMTP_USER;
+
+    const u = await request(app).post('/api/auth/users').set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: EMAIL, password: 'originalpass1', name: 'Reset Subject', role: 'editor' });
+    uid = u.body.user.id;
+  });
+  afterAll(async () => {
+    await request(app).delete(`/api/auth/users/${uid}`).set('Authorization', `Bearer ${adminToken}`).catch(() => null);
+    await new Promise<void>((r) => smtp.close(() => r()));
+    delete process.env.SMTP_HOST; delete process.env.SMTP_FROM;
+  });
+
+  it('emails a reset link that actually works end to end', async () => {
+    mails = [];
+    const req1 = await request(app).post('/api/auth/forgot').send({ email: EMAIL });
+    expect(req1.status).toBe(200);
+    await new Promise((r) => setTimeout(r, 400));
+    expect(mails.length).toBe(1);
+    expect(mails[0].to).toContain(EMAIL);
+
+    const link = /https?:\/\/[^\s"]*app\.html\?reset=([A-Za-z0-9_\-]+)/.exec(decodeMail(mails[0].raw));
+    expect(link).toBeTruthy();
+    const token = link![1];
+
+    const done = await request(app).post('/api/auth/reset').send({ token, password: 'brandnewpass9' });
+    expect(done.status).toBe(200);
+
+    const oldLogin = await request(app).post('/api/auth/login').send({ email: EMAIL, password: 'originalpass1' });
+    expect(oldLogin.status).toBe(401);
+    const newLogin = await request(app).post('/api/auth/login').send({ email: EMAIL, password: 'brandnewpass9' });
+    expect(newLogin.status).toBe(200);
+    expect(newLogin.body.token).toBeTruthy();
+  });
+
+  it('a reset token is single use', async () => {
+    mails = [];
+    await request(app).post('/api/auth/forgot').send({ email: EMAIL });
+    await new Promise((r) => setTimeout(r, 400));
+    const token = /app\.html\?reset=([A-Za-z0-9_\-]+)/.exec(decodeMail(mails[0].raw))![1];
+    const first = await request(app).post('/api/auth/reset').send({ token, password: 'secondpass77' });
+    expect(first.status).toBe(200);
+    const replay = await request(app).post('/api/auth/reset').send({ token, password: 'thirdpass888' });
+    expect(replay.status).toBe(400);
+  });
+
+  it('an expired token is refused', async () => {
+    mails = [];
+    await request(app).post('/api/auth/forgot').send({ email: EMAIL });
+    await new Promise((r) => setTimeout(r, 400));
+    const token = /app\.html\?reset=([A-Za-z0-9_\-]+)/.exec(decodeMail(mails[0].raw))![1];
+    await run('UPDATE users SET reset_expires_at = (NOW() - INTERVAL 1 MINUTE) WHERE id = ?', [uid]);
+    const res = await request(app).post('/api/auth/reset').send({ token, password: 'toolatepass1' });
+    expect(res.status).toBe(400);
+  });
+
+  it('a forged token is refused', async () => {
+    const res = await request(app).post('/api/auth/reset').send({ token: 'not-a-real-token-at-all', password: 'whateverpass1' });
+    expect(res.status).toBe(400);
+  });
+
+  it('the raw token is never stored, only its hash', async () => {
+    mails = [];
+    await request(app).post('/api/auth/forgot').send({ email: EMAIL });
+    await new Promise((r) => setTimeout(r, 400));
+    const token = /app\.html\?reset=([A-Za-z0-9_\-]+)/.exec(decodeMail(mails[0].raw))![1];
+    const row = await one<{ reset_token_hash: string }>('SELECT reset_token_hash FROM users WHERE id = ?', [uid]);
+    expect(row!.reset_token_hash).toBeTruthy();
+    expect(row!.reset_token_hash).not.toBe(token);
+    expect(row!.reset_token_hash.length).toBe(64); // sha-256 hex
+  });
+
+  it('does not reveal whether an address has an account', async () => {
+    const known = await request(app).post('/api/auth/forgot').send({ email: EMAIL });
+    const unknown = await request(app).post('/api/auth/forgot').send({ email: 'nobody.here@ninepoint.com' });
+    expect(unknown.status).toBe(known.status);
+    expect(unknown.body.message).toBe(known.body.message);
+  });
+});
+
+describe('changing your own password', () => {
+  it('requires the current password and then works', async () => {
+    const created = await request(app).post('/api/auth/users').set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'selfchange@ninepoint.com', password: 'startingpw1', role: 'viewer' });
+    const login = await request(app).post('/api/auth/login').send({ email: 'selfchange@ninepoint.com', password: 'startingpw1' });
+    const t = login.body.token;
+
+    const wrong = await request(app).post('/api/auth/password').set('Authorization', `Bearer ${t}`)
+      .send({ currentPassword: 'notmypassword', newPassword: 'changedpw123' });
+    expect(wrong.status).toBe(401);
+
+    const ok = await request(app).post('/api/auth/password').set('Authorization', `Bearer ${t}`)
+      .send({ currentPassword: 'startingpw1', newPassword: 'changedpw123' });
+    expect(ok.status).toBe(200);
+
+    const relog = await request(app).post('/api/auth/login').send({ email: 'selfchange@ninepoint.com', password: 'changedpw123' });
+    expect(relog.status).toBe(200);
+    await request(app).delete(`/api/auth/users/${created.body.user.id}`).set('Authorization', `Bearer ${adminToken}`);
+  });
+});
+
+describe('admin user management', () => {
+  it('adds a user, sets their password, and removes them', async () => {
+    const created = await request(app).post('/api/auth/users').set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'lifecycle@ninepoint.com', password: 'firstpass11', name: 'Life Cycle', role: 'editor' });
+    expect(created.status).toBe(201);
+    const id = created.body.user.id;
+
+    const dupe = await request(app).post('/api/auth/users').set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'lifecycle@ninepoint.com', password: 'otherpass11' });
+    expect(dupe.status).toBe(409);
+
+    const setPw = await request(app).post(`/api/auth/users/${id}/password`).set('Authorization', `Bearer ${adminToken}`)
+      .send({ password: 'adminsetpw22' });
+    expect(setPw.status).toBe(200);
+    const login = await request(app).post('/api/auth/login').send({ email: 'lifecycle@ninepoint.com', password: 'adminsetpw22' });
+    expect(login.status).toBe(200);
+
+    const gone = await request(app).delete(`/api/auth/users/${id}`).set('Authorization', `Bearer ${adminToken}`);
+    expect(gone.status).toBe(200);
+    const after = await request(app).post('/api/auth/login').send({ email: 'lifecycle@ninepoint.com', password: 'adminsetpw22' });
+    expect(after.status).toBe(401);
+  });
+
+  it('is admin only, and refuses to remove the last admin or yourself', async () => {
+    const forbidden = await request(app).post('/api/auth/users').set('Authorization', `Bearer ${editorToken}`)
+      .send({ email: 'nope@ninepoint.com', password: 'nopass12345' });
+    expect(forbidden.status).toBe(403);
+
+    const me = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${adminToken}`);
+    const self = await request(app).delete(`/api/auth/users/${me.body.user.id}`).set('Authorization', `Bearer ${adminToken}`);
+    expect(self.status).toBe(400);
+  });
+
+  it('self-registration is closed unless explicitly enabled', async () => {
+    const prev = process.env.ALLOW_REGISTRATION;
+    delete process.env.ALLOW_REGISTRATION;              // the shipped default
+    const res = await request(app).post('/api/auth/register')
+      .send({ email: 'walkin@ninepoint.com', password: 'walkinpass1' });
+    expect(res.status).toBe(403);
+    const policy = await request(app).get('/api/auth/policy');
+    expect(policy.body.allowRegistration).toBe(false);
+    process.env.ALLOW_REGISTRATION = prev;
+  });
+});
+
+describe('geography filters: country, province/state, city', () => {
+  // The shipped fixture is a 300-row US slice, so plant known rows across two
+  // countries and two states to prove the scoping at every level.
+  let ids: number[] = [];
+  beforeAll(async () => {
+    const mk = async (name: string, country: string, st: string, city: string) =>
+      (await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+        .send({ name, firm: 'GeoCo', email: name.replace(/ /g, '.').toLowerCase() + '@geo.test', country, state: st, city })).body.contact.id;
+    ids.push(await mk('Geo SF One', 'United States', 'California', 'San Francisco'));
+    ids.push(await mk('Geo SF Two', 'United States', 'California', 'San Francisco'));
+    ids.push(await mk('Geo LA One', 'United States', 'California', 'Los Angeles'));
+    ids.push(await mk('Geo NYC One', 'United States', 'New York', 'New York'));
+    ids.push(await mk('Geo Toronto One', 'Canada', 'ON', 'Toronto'));
+  });
+  afterAll(async () => {
+    for (const id of ids) await run('DELETE FROM contacts WHERE id = ?', [id]).catch(() => null);
+  });
+
+  const qs = (params: Record<string, string>) => new URLSearchParams(params).toString();
+  // every geo query is scoped to the planted rows (firm "GeoCo") so the result
+  // is exact and independent of paging
+  const get = (params: Record<string, string>) =>
+    request(app).get('/api/contacts?' + qs({ pageSize: '200', q: 'GeoCo', ...params })).set('Authorization', `Bearer ${viewerToken}`);
+  const meta = (params: Record<string, string> = {}) =>
+    request(app).get('/api/contacts/meta' + (Object.keys(params).length ? '?' + qs(params) : '')).set('Authorization', `Bearer ${viewerToken}`);
+
+  it('filters by province/state', async () => {
+    const res = await get({ state: 'California' });
+    expect(res.body.total).toBe(3);
+    expect(res.body.rows.every((r: any) => r.state === 'California')).toBe(true);
+  });
+
+  it('narrows country -> state -> city, each level tightening the last', async () => {
+    const country = await get({ country: 'United States' });
+    const st = await get({ country: 'United States', state: 'California' });
+    const city = await get({ country: 'United States', state: 'California', city: 'San Francisco' });
+    expect(country.body.total).toBe(4);   // 4 US rows planted
+    expect(st.body.total).toBe(3);        // 3 of them in California
+    expect(city.body.total).toBe(2);      // 2 of those in San Francisco
+    expect(city.body.rows.every((r: any) => r.city === 'San Francisco' && r.state === 'California')).toBe(true);
+  });
+
+  it('a state from the wrong country yields nothing, rather than silently ignoring the mismatch', async () => {
+    const res = await get({ country: 'Canada', state: 'California' });
+    expect(res.body.total).toBe(0);
+  });
+
+  it('meta scopes provinces to the selected country, with counts', async () => {
+    const us = await meta({ country: 'United States' });
+    const names = us.body.states.map((r: any) => r.name);
+    expect(names).toContain('California');
+    expect(names).toContain('New York');
+    expect(names).not.toContain('ON');            // a Canadian province
+    const ca = await meta({ country: 'Canada' });
+    expect(ca.body.states.map((r: any) => r.name)).toContain('ON');
+    expect(ca.body.states.map((r: any) => r.name)).not.toContain('California');
+    // biggest first
+    const counts = us.body.states.map((r: any) => r.count);
+    expect(counts[0]).toBeGreaterThanOrEqual(counts[counts.length - 1]);
+  });
+
+  it('meta scopes cities to the selected province, not just the country', async () => {
+    const caOnly = await meta({ country: 'United States', state: 'California' });
+    const names = caOnly.body.cities.map((r: any) => r.name);
+    expect(names).toContain('San Francisco');
+    expect(names).toContain('Los Angeles');
+    expect(names).not.toContain('New York');      // a different state
+    const sf = caOnly.body.cities.find((r: any) => r.name === 'San Francisco');
+    expect(sf.count).toBeGreaterThanOrEqual(2);
+
+    // without a state, the city list widens back out to the whole country
+    const countryWide = await meta({ country: 'United States' });
+    expect(countryWide.body.cities.map((r: any) => r.name)).toContain('New York');
+  });
+
+  it('geography filters apply to CSV export too', async () => {
+    const res = await request(app)
+      .get('/api/contacts/export.csv?' + qs({ country: 'United States', state: 'California', city: 'San Francisco' }))
+      .set('Authorization', `Bearer ${viewerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('Geo SF One');
+    expect(res.text).not.toContain('Geo LA One');
+    expect(res.text).not.toContain('Geo NYC One');
+  });
+
+  it('the old region parameter is gone and is simply ignored', async () => {
+    const all = await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${viewerToken}`);
+    const withRegion = await request(app).get('/api/contacts?region=canada&pageSize=1').set('Authorization', `Bearer ${viewerToken}`);
+    expect(withRegion.body.total).toBe(all.body.total);
+  });
+});
+
+
+describe('people at the firm (assistants, associates, branch managers)', () => {
+  let cid = 0;
+  beforeAll(async () => {
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Branch Advisor', firm: 'Northgate Wealth', email: 'branch.advisor@northgate.test', city: 'Toronto', country: 'Canada', state: 'ON' });
+    cid = c.body.contact.id;
+  });
+  afterAll(async () => {
+    await run('DELETE FROM contacts WHERE id = ?', [cid]).catch(() => null);
+  });
+
+  it('adds, lists, edits, and removes people on a contact', async () => {
+    const add = await request(app).post(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ name: 'Dana Reyes', role: 'Executive assistant', email: 'Dana.Reyes@NORTHGATE.test', phone: '416-555-0180' });
+    expect(add.status).toBe(201);
+    expect(add.body.person.email).toBe('dana.reyes@northgate.test');   // normalised
+
+    await request(app).post(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ name: 'Sam Okoye', role: 'Branch manager', email: 'sam.okoye@northgate.test' });
+
+    const list = await request(app).get(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${viewerToken}`);
+    expect(list.body.people.length).toBe(2);
+
+    const pid = add.body.person.id;
+    const edit = await request(app).patch(`/api/contacts/${cid}/people/${pid}`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ name: 'Dana Reyes', role: 'Chief of staff', email: 'dana.reyes@northgate.test', phone: '416-555-0180' });
+    expect(edit.status).toBe(200);
+    expect(edit.body.person.role).toBe('Chief of staff');
+
+    const del = await request(app).delete(`/api/contacts/${cid}/people/${pid}`).set('Authorization', `Bearer ${editorToken}`);
+    expect(del.status).toBe(200);
+    const after = await request(app).get(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${viewerToken}`);
+    expect(after.body.people.length).toBe(1);
+  });
+
+  it('searching an assistant by name or email finds the advisor they work for', async () => {
+    await request(app).post(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ name: 'Priya Raman', role: 'Associate advisor', email: 'priya.raman@northgate.test' });
+
+    const byName = await request(app).get('/api/contacts?q=' + encodeURIComponent('Priya Raman')).set('Authorization', `Bearer ${viewerToken}`);
+    expect(byName.body.total).toBe(1);
+    expect(byName.body.rows[0].id).toBe(cid);
+    expect(byName.body.rows[0].name).toBe('Branch Advisor');   // the contact, not the assistant
+
+    const byEmail = await request(app).get('/api/contacts?q=' + encodeURIComponent('priya.raman@northgate.test')).set('Authorization', `Bearer ${viewerToken}`);
+    expect(byEmail.body.total).toBe(1);
+    expect(byEmail.body.rows[0].id).toBe(cid);
+  });
+
+  it('viewers cannot add or remove people', async () => {
+    const res = await request(app).post(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${viewerToken}`)
+      .send({ name: 'Nope', email: 'nope@northgate.test' });
+    expect(res.status).toBe(403);
+  });
+
+  it('requires a name, and rejects a malformed email', async () => {
+    const noName = await request(app).post(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${editorToken}`).send({ role: 'Assistant' });
+    expect(noName.status).toBe(400);
+    const badEmail = await request(app).post(`/api/contacts/${cid}/people`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ name: 'Bad Email', email: 'not-an-email' });
+    expect(badEmail.status).toBe(400);
+  });
+
+  it('people cannot outlive their contact (foreign key cascades)', async () => {
+    // This version has no delete-contact endpoint, so the guarantee we need is
+    // the database constraint itself: remove the row and the people go with it,
+    // leaving no orphans behind whatever deletes a contact in future.
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Doomed Advisor', firm: 'Doomed Co', email: 'doomed@x.test' });
+    const id = c.body.contact.id;
+    await request(app).post(`/api/contacts/${id}/people`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ name: 'Doomed Assistant', email: 'doomed.assistant@x.test' });
+    expect((await q('SELECT id FROM contact_people WHERE contact_id = ?', [id])).length).toBe(1);
+
+    await run('DELETE FROM contacts WHERE id = ?', [id]);
+    const orphans = await q('SELECT id FROM contact_people WHERE contact_id = ?', [id]);
+    expect(orphans.length).toBe(0);
+  });
+});
+
+describe('coverage filters: list, no email, not in pipeline', () => {
+  it('filters by source list (advisors versus institutional)', async () => {
+    const all = await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${viewerToken}`);
+    const meta = await request(app).get('/api/contacts/meta').set('Authorization', `Bearer ${viewerToken}`);
+    expect(meta.body.sources.length).toBeGreaterThan(0);
+    const src = meta.body.sources[0];
+    const res = await request(app).get('/api/contacts?pageSize=200&source=' + encodeURIComponent(src)).set('Authorization', `Bearer ${viewerToken}`);
+    expect(res.body.total).toBeGreaterThan(0);
+    expect(res.body.total).toBeLessThanOrEqual(all.body.total);
+    expect(res.body.rows.every((r: any) => r.source_list === src)).toBe(true);
+  });
+
+  it('finds contacts with no email on file', async () => {
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Unreachable Person', firm: 'NoMailCo' });
+    const res = await request(app).get('/api/contacts?noemail=true&pageSize=200&q=Unreachable').set('Authorization', `Bearer ${viewerToken}`);
+    expect(res.body.total).toBe(1);
+    expect(res.body.rows[0].email === null || res.body.rows[0].email === '').toBe(true);
+    // and it is excluded when the filter is off but "reachable only" is on
+    const reach = await request(app).get('/api/contacts?reachable=true&q=Unreachable').set('Authorization', `Bearer ${viewerToken}`);
+    expect(reach.body.total).toBe(0);
+    await run('DELETE FROM contacts WHERE id = ?', [c.body.contact.id]);
+  });
+
+  it('finds contacts not in your pipeline, and drops them once they are', async () => {
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Untouched Prospect', firm: 'UntouchedCo', email: 'untouched@x.test' });
+    const id = c.body.contact.id;
+
+    const before = await request(app).get('/api/contacts?nopipeline=true&q=Untouched').set('Authorization', `Bearer ${adminToken}`);
+    expect(before.body.total).toBe(1);
+
+    await request(app).put(`/api/pipeline/${id}`).set('Authorization', `Bearer ${adminToken}`).send({ status: 'Contacted' });
+
+    const after = await request(app).get('/api/contacts?nopipeline=true&q=Untouched').set('Authorization', `Bearer ${adminToken}`);
+    expect(after.body.total).toBe(0);   // now tracked, so no longer "untouched"
+    await run('DELETE FROM contacts WHERE id = ?', [id]);
   });
 });
