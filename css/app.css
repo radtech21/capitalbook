@@ -119,7 +119,7 @@ button{font-family:inherit;cursor:pointer}
 .dcard td{padding:3px 0;border-bottom:1px solid #efece4}
 .dcard tbody tr:last-child td{border-bottom:none}
 .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:middle}
-@media(max-width:860px){.dgrid{grid-template-columns:1fr}.body{grid-template-columns:1fr}.filters{display:none}}
+@media(max-width:860px){.dgrid{grid-template-columns:1fr}}
 
 /* ---- badges / tasks / activities / edit (increment 2) ---- */
 .badge{display:inline-block;min-width:16px;padding:0 5px;height:16px;line-height:16px;font-size:10px;font-weight:700;background:var(--brass);color:#241c06;border-radius:20px;text-align:center}
@@ -275,3 +275,104 @@ button{font-family:inherit;cursor:pointer}
 .ppl-add{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .ppl-add input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:12.5px;font-family:inherit}
 .ppl-add button{grid-column:1/-1}
+
+/* ==========================================================================
+   RESPONSIVE
+   The desktop layout is a 230px filter rail beside a seven-column table. On a
+   phone neither survives: the table forces ~1270px of horizontal scroll and the
+   rail was previously just display:none, which left no way to filter at all.
+   Below 860px the shell becomes: a slide-in nav, a slide-in filter sheet, and
+   list rows that read as cards.
+   ========================================================================== */
+
+/* controls that only exist on mobile */
+.icon-btn{display:none;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px;line-height:0;cursor:pointer}
+.icon-btn:hover{background:rgba(255,255,255,.2)}
+.filt-btn{display:none;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;min-height:38px}
+.filt-count{background:var(--brass);color:#241c06;border-radius:20px;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px}
+.filt-close{display:none;position:absolute;top:10px;right:10px;background:none;border:none;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:2px 8px}
+.scrim{display:none;position:fixed;inset:0;background:rgba(14,33,56,.5);z-index:29}
+.scrim.show{display:block}
+
+@media(max-width:860px){
+  html,body{overflow-x:hidden}
+
+  /* ---- top bar: brand + search + hamburger. Everything else moves into a sheet ---- */
+  .icon-btn{display:inline-flex;align-items:center;justify-content:center}
+  .topbar{gap:10px;padding:10px 12px;flex-wrap:nowrap}
+  .topbar .ttl{font-size:14px;white-space:nowrap}
+  .topbar .sp{display:none}
+  .search{max-width:none;min-width:0;padding:7px 10px}
+
+  .tb-actions{
+    position:fixed;top:0;right:0;bottom:0;width:min(280px,84vw);
+    background:var(--ink);z-index:30;
+    display:flex;flex-direction:column;align-items:stretch;gap:8px;
+    padding:18px 16px;overflow-y:auto;
+    transform:translateX(100%);transition:transform .22s ease;
+    box-shadow:-18px 0 50px rgba(0,0,0,.35);
+  }
+  .tb-actions.open{transform:none}
+  .tb-actions .tb-btn{width:100%;text-align:left;padding:12px 14px;font-size:14px;min-height:44px}
+  .tb-actions .tb-user{order:-1;display:flex;flex-direction:column;gap:4px;align-items:flex-start;
+    padding:0 2px 14px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,.16);font-size:12.5px}
+
+  /* ---- filters: a reachable sheet, not display:none ---- */
+  .body{grid-template-columns:1fr}
+  .filters{
+    position:fixed;top:0;left:0;bottom:0;width:min(300px,86vw);
+    z-index:30;padding:44px 16px 24px;
+    transform:translateX(-100%);transition:transform .22s ease;
+    box-shadow:18px 0 50px rgba(0,0,0,.25);border-right:none;
+  }
+  .filters.open{transform:none}
+  .filt-close{display:block}
+  .filters select{padding:11px 10px;font-size:14px;min-height:44px}
+  .filters .chk{padding:7px 0;font-size:13.5px}
+  .filters .reset{padding:12px;min-height:44px;font-size:13px}
+
+  /* ---- toolbar ---- */
+  .filt-btn{display:inline-flex}
+  .toolbar{gap:8px;padding:9px 12px;flex-wrap:wrap}
+  .toolbar .lbl{display:none}
+  .toolbar select,.toolbar .dir{min-height:38px;font-size:12.5px}
+
+  /* ---- list rows become cards ---- */
+  .ghead{display:none}
+  .row{
+    display:flex;flex-wrap:wrap;align-items:center;
+    gap:6px 8px;padding:13px 14px;
+    grid-template-columns:none;
+  }
+  .row::before{content:'';flex-basis:100%;height:0;order:4}   /* line break after AUM */
+  .row > *:nth-child(1){order:1;flex:0 0 auto}                /* checkbox */
+  .row > *:nth-child(2){order:2;flex:1 1 auto;min-width:0}    /* name + firm */
+  .row > *:nth-child(5){order:3;margin-left:auto;font-size:13px}  /* AUM, pushed right */
+  .row > *:nth-child(3){order:5;flex:0 1 auto;min-width:0;max-width:52%}  /* segment */
+  .row > *:nth-child(4){order:6;flex:1 1 auto;min-width:0;font-size:11.5px;color:var(--muted);
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}  /* location */
+  .row > *:nth-child(6){order:7;flex:0 0 auto}                /* priority badge */
+  .row > *:nth-child(7){order:8;flex:0 0 auto}                /* status */
+  .row .nm{font-size:14px}
+  .row .fm{font-size:12px}
+  .pri{justify-self:auto}
+
+  /* ---- drawer and modals go full screen ---- */
+  .drawer{width:100%;max-width:100%}
+  .dr-head{padding:16px 16px}
+  .dr-body{padding:16px}
+  .dr-grid{grid-template-columns:1fr}
+  .modal{padding:0;align-items:stretch}
+  .modal-card{width:100%;min-height:100%;border-radius:0;padding:20px 16px 40px}
+  .ppl-add{grid-template-columns:1fr}
+  .sf-grid{grid-template-columns:1fr !important}
+
+  /* ---- tap targets ---- */
+  .dr-act,.sf-btn,.urow-act{min-height:40px}
+  .login-card{margin:0 4px}
+}
+
+@media(max-width:420px){
+  .topbar .ttl{display:none}          /* the spine and search carry the brand at this width */
+  .row > *:nth-child(3){max-width:100%}
+}

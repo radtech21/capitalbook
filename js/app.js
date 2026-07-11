@@ -105,6 +105,7 @@ function buildQuery(){
 async function loadPage(append){
   const data = await api('/contacts?'+buildQuery());
   $('resCount').textContent = data.total.toLocaleString();
+  if(window.updateFilterCount) window.updateFilterCount();
   totalPages = data.pages;
   const rowsEl = $('rows');
   if(!append) rowsEl.innerHTML='';
@@ -889,3 +890,57 @@ async function loadPeople(contactId, canEdit){
     };
   }
 }
+
+// ---------- mobile shell: nav sheet, filter sheet, active-filter count ----------
+// The desktop rail and topbar do not fit a phone. Below 860px both become
+// slide-in sheets sharing one scrim, and the list rows reflow into cards (CSS).
+(function mobileShell(){
+  const nav = $('tbActions'), filters = $('filters'), scrim = $('scrim');
+  if(!nav || !filters || !scrim) return;
+
+  function closeAll(){
+    nav.classList.remove('open');
+    filters.classList.remove('open');
+    scrim.classList.remove('show');
+    $('navBtn').setAttribute('aria-expanded','false');
+    document.body.style.overflow = '';
+  }
+  function open(panel){
+    closeAll();
+    panel.classList.add('open');
+    scrim.classList.add('show');
+    document.body.style.overflow = 'hidden';   // stop the list scrolling behind the sheet
+    if(panel === nav) $('navBtn').setAttribute('aria-expanded','true');
+  }
+
+  $('navBtn').onclick  = () => nav.classList.contains('open') ? closeAll() : open(nav);
+  $('filtBtn').onclick = () => filters.classList.contains('open') ? closeAll() : open(filters);
+  $('filtClose').onclick = closeAll;
+  scrim.onclick = closeAll;
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAll(); });
+
+  // tapping any action in the nav sheet should close it, or the modal opens behind
+  nav.querySelectorAll('.tb-btn').forEach(b => b.addEventListener('click', () => {
+    if(window.innerWidth <= 860) setTimeout(closeAll, 60);
+  }));
+
+  // back to desktop: make sure nothing is left stuck open
+  let wasNarrow = window.innerWidth <= 860;
+  window.addEventListener('resize', () => {
+    const narrow = window.innerWidth <= 860;
+    if(wasNarrow && !narrow) closeAll();
+    wasNarrow = narrow;
+  });
+
+  // how many filters are on, so a phone user is not filtering blind
+  window.updateFilterCount = function(){
+    const keys = ['segment','priority','country','state','city','tier','status','tag','owner','source'];
+    const bools = ['reachable','uhnw','institutional','flag','due','noemail','nopipeline'];
+    let n = keys.filter(k => state[k]).length + bools.filter(k => state[k]).length;
+    const el = $('filtCount');
+    if(!el) return;
+    el.textContent = String(n);
+    el.classList.toggle('hidden', n === 0);
+  };
+})();
+

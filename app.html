@@ -55,12 +55,16 @@
 <!-- APP -->
 <div id="app" class="app">
   <div class="topbar">
+    <button id="navBtn" class="icon-btn" aria-label="Menu" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+    </button>
     <span class="spine"></span><span class="ttl">Capital Book</span>
     <div class="search">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4"/></svg>
       <input id="q" type="text" placeholder="Search name, firm, email, city">
     </div>
     <div class="sp"></div>
+    <div class="tb-actions" id="tbActions">
     <button id="feedBtn" class="tb-btn">Feed</button>
     <button id="tasksBtn" class="tb-btn">Tasks <span id="taskBadge" class="badge hidden">0</span></button>
     <button id="importBtn" class="tb-btn hidden">Import</button>
@@ -70,10 +74,13 @@
     <button id="dashBtn" class="tb-btn">Dashboard</button>
     <div class="tb-user"><span id="userEmail"></span><span id="userRole" class="tb-role"></span></div>
     <button id="logoutBtn" class="tb-btn">Sign out</button>
+    </div>
   </div>
+  <div id="scrim" class="scrim"></div>
 
   <div class="body">
-    <aside class="filters">
+    <aside class="filters" id="filters">
+      <button id="filtClose" class="filt-close" aria-label="Close filters">&times;</button>
       <h3>Saved views</h3>
       <select id="viewSel"><option value="">Apply a saved view…</option></select>
       <button class="reset" id="saveViewBtn" style="margin-top:6px">Save current view</button>
@@ -100,6 +107,10 @@
 
     <main class="main">
       <div class="toolbar">
+        <button id="filtBtn" class="filt-btn" aria-label="Filters">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h14M6 10h8M9 15h2"/></svg>
+          Filters <span id="filtCount" class="filt-count hidden">0</span>
+        </button>
         <span class="count"><b id="resCount">0</b> results</span>
         <div class="sp"></div>
         <span class="lbl">Sort</span>
