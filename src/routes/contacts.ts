@@ -10,7 +10,7 @@ const SORT_COLUMNS: Record<string, string> = {
   a: 'c.aum_mm', ls: 'c.lead_score', pr: 'c.priority', r25: 'c.state_rank', n: 'c.name',
 };
 const BOOL_FILTERS: Record<string, string> = {
-  reachable: 'c.reachable', uhnw: 'c.uhnw', institutional: 'c.institutional',
+  reachable: 'c.reachable', uhnw: 'c.uhnw', institutional: 'c.institutional', foundation: 'c.foundation',
 };
 
 // columns that may be written by create/edit/import (id handled separately)
@@ -36,7 +36,7 @@ function buildFilter(req: any): { whereSql: string; params: unknown[] } {
     const like = '%' + term + '%';
     params.push(like, like, like, like, like, like);
   }
-  for (const [param, col] of [['segment', 'c.segment'], ['priority', 'c.priority'], ['country', 'c.country'], ['state', 'c.state'], ['city', 'c.city'], ['tier', 'c.aum_tier'], ['source', 'c.source_list']] as const) {
+  for (const [param, col] of [['segment', 'c.segment'], ['priority', 'c.priority'], ['country', 'c.country'], ['state', 'c.state'], ['city', 'c.city'], ['tier', 'c.aum_tier'], ['source', 'c.source_list'], ['firmtype', 'c.firm_type'], ['emailstatus', 'c.email_status']] as const) {
     const v = req.query[param];
     if (v) { where.push(`${col} = ?`); params.push(String(v)); }
   }
@@ -59,6 +59,38 @@ function buildFilter(req: any): { whereSql: string; params: unknown[] } {
   }
   return { whereSql: where.length ? 'WHERE ' + where.join(' AND ') : '', params };
 }
+
+// GET /api/contacts/report?by=<dimension>
+// The current filtered view, grouped by one dimension, with the rollups a desk
+// actually asks for: how many, how much AUM, how many in my pipeline, how much
+// open opportunity. Same buildFilter and same join as the list, so the numbers
+// always reconcile with what is on screen. This is Sales Nebula's report builder
+// distilled to the one query shape this desk uses.
+const REPORT_DIMS: Record<string, string> = {
+  firmtype: 'c.firm_type', segment: 'c.segment', country: 'c.country', state: 'c.state',
+  tier: 'c.aum_tier', priority: 'c.priority', emailstatus: 'c.email_status',
+  source: 'c.source_list', status: 'p.status', owner: "COALESCE(ou.email, '')",
+};
+contactsRouter.get('/report', requireAuth, async (req, res) => {
+  const by = String(req.query.by || 'firmtype');
+  const dim = REPORT_DIMS[by];
+  if (!dim) return res.status(400).json({ error: 'Unknown dimension', allowed: Object.keys(REPORT_DIMS) });
+  const { whereSql, params } = buildFilter(req);
+  const join = 'LEFT JOIN pipeline p ON p.contact_id = c.id AND p.user_id = ? LEFT JOIN users ou ON ou.id = c.owner_id';
+  const rows = await q(
+    `SELECT COALESCE(NULLIF(${dim}, ''), '(blank)') AS bucket,
+            COUNT(*) AS contacts,
+            COALESCE(SUM(c.aum_mm), 0) AS aum_mm,
+            SUM(CASE WHEN p.status IS NOT NULL THEN 1 ELSE 0 END) AS in_pipeline,
+            COALESCE(SUM(CASE WHEN p.status IS NOT NULL AND p.status <> 'Passed' THEN p.opp ELSE 0 END), 0) AS open_opp
+     FROM contacts c ${join} ${whereSql}
+     GROUP BY bucket
+     ORDER BY contacts DESC, bucket ASC
+     LIMIT 100`,
+    [req.user!.uid, ...params]
+  );
+  return res.json({ by, rows });
+});
 
 // GET /api/contacts -> filtered, sorted, paginated list
 contactsRouter.get('/', requireAuth, async (req, res) => {
@@ -120,6 +152,14 @@ contactsRouter.get('/meta', requireAuth, async (req, res) => {
   return res.json({
     segments: await distinct('segment'), countries: await distinct('country'), tiers: await distinct('aum_tier'),
     priorities: await distinct('priority'), sources: await distinct('source_list'),
+    // firm_type has a long tail (89 distinct values); biggest first puts the
+    // eight that matter at the top of the dropdown instead of alphabetical noise
+    firmTypes: (await q<{ v: string }>(
+      "SELECT firm_type AS v FROM contacts WHERE firm_type <> '' GROUP BY firm_type ORDER BY COUNT(*) DESC, v ASC"
+    )).map((r) => r.v),
+    emailStatuses: (await q<{ v: string }>(
+      "SELECT email_status AS v FROM contacts WHERE email_status <> '' GROUP BY email_status ORDER BY COUNT(*) DESC, v ASC"
+    )).map((r) => r.v),
     states: states.map((r) => ({ name: r.v, count: Number(r.n) })),
     cities: cities.map((r) => ({ name: r.v, count: Number(r.n) })),
   });
@@ -160,7 +200,9 @@ const createSchema = z.object({
   email: z.string().max(200).optional(),
   priority: z.string().max(4).optional(),
 }).passthrough();
-contactsRouter.post('/', requireAuth, requireRole('admin'), async (req, res) => {
+// Editors can enter a contact they meet; bulk import stays admin-only. This was
+// admin-only by design originally; opened to editors on explicit instruction.
+contactsRouter.post('/', requireAuth, requireRole('editor'), async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
   const next = Number((await one<{ n: number }>('SELECT COALESCE(MAX(id),0)+1 AS n FROM contacts'))!.n);
@@ -201,30 +243,53 @@ contactsRouter.post('/import', requireAuth, requireRole('admin'), async (req, re
   }
   if (!Array.isArray(arr)) return res.status(400).json({ error: 'Body must be { contacts: [...] }, { csv: "..." }, or an array' });
 
-  const cols = ['id', ...WRITABLE];
-  const qs = cols.map(() => '?').join(',');
-  const updateClause = WRITABLE.map((c) => `${c} = VALUES(${c})`).join(', ');
-  const sql = `INSERT INTO contacts (${cols.join(',')}) VALUES (${qs}) ON DUPLICATE KEY UPDATE ${updateClause}`;
+  // Rows are matched to existing contacts by EMAIL, not just by id. An advisor
+  // list from any outside source has no id column, so matching on id alone would
+  // mint a fresh id for every row and duplicate the entire book on the first
+  // refresh. Email is the only stable key such a list actually carries.
+  const emailRows = await q<{ e: string; i: number }>(
+    "SELECT LOWER(email) AS e, MIN(id) AS i FROM contacts WHERE email IS NOT NULL AND email <> '' GROUP BY LOWER(email)"
+  );
+  const byEmail = new Map(emailRows.map((r) => [r.e, Number(r.i)]));
+
   let next = Number((await one<{ n: number }>('SELECT COALESCE(MAX(id),0)+1 AS n FROM contacts'))!.n);
-  let imported = 0;
+  let imported = 0, created = 0, updated = 0;
   try {
     await tx(async (conn) => {
       for (const raw of arr as unknown[]) {
         if (!raw || typeof raw !== 'object') continue;
         const rec = raw as Record<string, unknown>;
         if (!rec.name) continue;
-        const id = rec.id != null ? Number(rec.id) : next++;
-        const vals = cols.map((c) => (c === 'id' ? id : c in rec ? coerce(c, rec[c]) : defaultFor(c)));
-        await conn.query(sql, vals);
+
+        const email = rec.email != null ? String(rec.email).trim().toLowerCase() : '';
+        let id: number;
+        let isNew = false;
+        if (rec.id != null) { id = Number(rec.id); updated++; }
+        else if (email && byEmail.has(email)) { id = byEmail.get(email)!; updated++; }
+        else { id = next++; if (email) byEmail.set(email, id); created++; isNew = true; }
+
+        // Only touch the columns the file actually supplies. A partial list (say
+        // name, email, firm) must never blank a phone number, city, or AUM that
+        // is already on file. New rows get sensible defaults for the rest.
+        const present = WRITABLE.filter((c) => c in rec);
+        const insertCols = isNew ? ['id', ...WRITABLE] : ['id', ...present];
+        const insertVals = insertCols.map((c) =>
+          c === 'id' ? id : c in rec ? coerce(c, rec[c]) : defaultFor(c)
+        );
+        const updateCols = present.length ? present : ['name'];
+        const sql =
+          `INSERT INTO contacts (${insertCols.join(',')}) VALUES (${insertCols.map(() => '?').join(',')})` +
+          ` ON DUPLICATE KEY UPDATE ${updateCols.map((c) => `${c} = VALUES(${c})`).join(', ')}`;
+        await conn.query(sql, insertVals);
         imported++;
       }
     });
   } catch (e) {
     return res.status(400).json({ error: 'Import failed', detail: String(e) });
   }
-  await writeAudit(req.user, 'import_contacts', 'contacts', imported);
+  await writeAudit(req.user, 'import_contacts', 'contacts', imported, { created, updated });
   const total = Number((await one<{ n: number }>('SELECT COUNT(*) AS n FROM contacts'))!.n);
-  return res.json({ imported, total });
+  return res.json({ imported, created, updated, total });
 });
 
 // POST /api/contacts/bulk -> apply one action to many contacts (editor or admin)

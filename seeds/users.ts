@@ -32,7 +32,7 @@ export async function seedUsers(): Promise<void> {
     }
     const pw = shared || randomBytes(9).toString('base64url');
     await pool.query(
-      'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+      'INSERT INTO users (email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, ?, 1)',
       [email, hashPassword(pw), name, role]
     );
     created.push([email, pw]);

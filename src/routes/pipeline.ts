@@ -17,7 +17,12 @@ const pipeSchema = z.object({
 
 // GET /api/pipeline -> all of the current user's entries (for cross-device sync)
 pipelineRouter.get('/', requireAuth, async (req, res) => {
-  const rows = await q('SELECT contact_id, status, due, opp, poc, note, updated_at FROM pipeline WHERE user_id = ? ORDER BY updated_at DESC', [req.user!.uid]);
+  // joined with the contact so the kanban board has card data in one call
+  const rows = await q(
+    `SELECT p.contact_id, p.status, p.due, p.opp, p.poc, p.note, p.updated_at,
+            c.name, c.firm, c.aum_mm, c.city
+     FROM pipeline p JOIN contacts c ON c.id = p.contact_id
+     WHERE p.user_id = ? ORDER BY p.updated_at DESC`, [req.user!.uid]);
   return res.json({ pipeline: rows });
 });
 

@@ -32,7 +32,7 @@ authRouter.post('/register', async (req, res) => {
   const existing = await one('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
   if (existing) return res.status(409).json({ error: 'Email already registered' });
 
-  const info = await run('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)', [email.toLowerCase(), hashPassword(password), name || '', 'viewer']);
+  const info = await run('INSERT INTO users (email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, ?, 0)', [email.toLowerCase(), hashPassword(password), name || '', 'viewer']);
   const user = { id: info.insertId, email: email.toLowerCase(), role: 'viewer' as Role, name: name || '' };
   await writeAudit({ uid: user.id, email: user.email, role: user.role }, 'register', 'user', user.id);
   const token = signToken({ uid: user.id, email: user.email, role: user.role });
@@ -44,14 +44,14 @@ authRouter.post('/login', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const { email, password } = parsed.data;
   const row = await one<{ id: number; email: string; password_hash: string; name: string; role: Role }>(
-    'SELECT id, email, password_hash, name, role FROM users WHERE email = ?', [email.toLowerCase()]
+    'SELECT id, email, password_hash, name, role, must_change_password FROM users WHERE email = ?', [email.toLowerCase()]
   );
   if (!row || !verifyPassword(password, row.password_hash)) {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
   const token = signToken({ uid: row.id, email: row.email, role: row.role });
   await writeAudit({ uid: row.id, email: row.email, role: row.role }, 'login', 'user', row.id);
-  return res.json({ token, user: { id: row.id, email: row.email, name: row.name, role: row.role } });
+  return res.json({ token, user: { id: row.id, email: row.email, name: row.name, role: row.role, mustChange: !!(row as any).must_change_password } });
 });
 
 authRouter.get('/me', requireAuth, async (req, res) => {
@@ -139,7 +139,7 @@ authRouter.post('/reset', async (req, res) => {
     [sha256(token)]
   );
   if (!user) return res.status(400).json({ error: 'This reset link is invalid or has expired. Request a new one.' });
-  await run('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL WHERE id = ?',
+  await run('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL, must_change_password = 0 WHERE id = ?',
     [hashPassword(password), user.id]);
   await writeAudit({ uid: user.id, email: user.email, role: user.role }, 'password_reset', 'user', user.id);
   return res.json({ ok: true });
@@ -154,7 +154,7 @@ authRouter.post('/password', requireAuth, async (req, res) => {
   const me = await one<{ id: number; password_hash: string }>('SELECT id, password_hash FROM users WHERE id = ?', [req.user!.uid]);
   if (!me || !verifyPassword(currentPassword, me.password_hash)) return res.status(401).json({ error: 'Your current password is not correct' });
   if (verifyPassword(newPassword, me.password_hash)) return res.status(400).json({ error: 'Choose a password you have not used here before' });
-  await run('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL WHERE id = ?', [hashPassword(newPassword), me.id]);
+  await run('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL, must_change_password = 0 WHERE id = ?', [hashPassword(newPassword), me.id]);
   await writeAudit(req.user, 'password_change', 'user', me.id);
   return res.json({ ok: true });
 });
@@ -177,7 +177,7 @@ authRouter.post('/users', requireAuth, requireRole('admin'), async (req, res) =>
   const addr = email.toLowerCase().trim();
   const existing = await one('SELECT id FROM users WHERE email = ?', [addr]);
   if (existing) return res.status(409).json({ error: 'That email already has an account' });
-  const info = await run('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+  const info = await run('INSERT INTO users (email, password_hash, name, role, must_change_password) VALUES (?, ?, ?, ?, 1)',
     [addr, hashPassword(password), name || '', role]);
   await writeAudit(req.user, 'create_user', 'user', info.insertId, { email: addr, role });
   return res.status(201).json({ user: { id: info.insertId, email: addr, name: name || '', role } });
@@ -207,8 +207,24 @@ authRouter.post('/users/:id/password', requireAuth, requireRole('admin'), async 
   const id = Number(req.params.id);
   const target = await one<{ id: number; email: string }>('SELECT id, email FROM users WHERE id = ?', [id]);
   if (!target) return res.status(404).json({ error: 'User not found' });
-  await run('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL WHERE id = ?',
+  await run('UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_expires_at = NULL, must_change_password = 1 WHERE id = ?',
     [hashPassword(parsed.data.password), id]);
   await writeAudit(req.user, 'admin_set_password', 'user', id, { email: target.email });
   return res.json({ ok: true });
+});
+
+// POST /api/auth/test-email -> sends a test message to the signed-in admin, so
+// SMTP configuration is verifiable from inside the app instead of guessed at.
+authRouter.post('/test-email', requireAuth, requireRole('admin'), async (req, res) => {
+  if (!mailConfigured()) {
+    return res.status(400).json({ error: 'SMTP is not configured. Set SMTP_HOST and SMTP_FROM (and SMTP_USER/SMTP_PASS if your relay needs them) in the server .env, then restart the API.' });
+  }
+  try {
+    await sendMail(req.user!.email, 'Capital Book test email',
+      'This is a test message from Capital Book. If you are reading it, outbound email works and "Forgot password?" is live.');
+    await writeAudit(req.user, 'test_email', 'user', req.user!.uid);
+    return res.json({ ok: true, to: req.user!.email });
+  } catch (e: any) {
+    return res.status(502).json({ error: 'SMTP is configured but sending failed: ' + String(e && e.message || e) });
+  }
 });

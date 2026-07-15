@@ -302,9 +302,12 @@ describe('contact mutation', () => {
     newId = res.body.contact.id;
     expect(res.body.contact.firm).toBe('Test Capital');
   });
-  it('blocks editors from creating (admin only) (403)', async () => {
-    const res = await request(app).post('/api/contacts').set('Authorization', `Bearer ${editorToken}`).send({ name: 'Nope' });
-    expect(res.status).toBe(403);
+  it('lets editors create (viewers still 403)', async () => {
+    const ed = await request(app).post('/api/contacts').set('Authorization', `Bearer ${editorToken}`).send({ name: 'Editor Made' });
+    expect(ed.status).toBe(201);
+    await run('DELETE FROM contacts WHERE id = ?', [ed.body.contact.id]);
+    const vw = await request(app).post('/api/contacts').set('Authorization', `Bearer ${viewerToken}`).send({ name: 'Nope' });
+    expect(vw.status).toBe(403);
   });
   it('lets editors edit selected fields', async () => {
     const res = await request(app).patch(`/api/contacts/${newId}`).set('Authorization', `Bearer ${editorToken}`).send({ priority: 'A', email: 'ir@testcapital.com' });
@@ -987,5 +990,203 @@ describe('coverage filters: list, no email, not in pipeline', () => {
     const after = await request(app).get('/api/contacts?nopipeline=true&q=Untouched').set('Authorization', `Bearer ${adminToken}`);
     expect(after.body.total).toBe(0);   // now tracked, so no longer "untouched"
     await run('DELETE FROM contacts WHERE id = ?', [id]);
+  });
+});
+
+
+describe('import must not destroy the book', () => {
+  it('a list with no id column updates existing contacts instead of duplicating them', async () => {
+    const before = (await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${adminToken}`)).body.total;
+    const known = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Known Advisor', firm: 'Original Firm', email: 'known.advisor@imp.test', phone: '416-555-3000', city: 'Toronto', aum_mm: 640 });
+    const id = known.body.contact.id;
+
+    // exactly what a refreshed advisor list looks like: no id column at all
+    const csv = 'name,firm,email\nKnown Advisor,Renamed Firm,known.advisor@imp.test\nBrand New One,NewCo,brand.new1@imp.test\nBrand New Two,NewCo,brand.new2@imp.test\n';
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ csv });
+    expect(res.status).toBe(200);
+    expect(res.body.created).toBe(2);     // the two we are actually missing
+    expect(res.body.updated).toBe(1);     // matched by email, not duplicated
+
+    const after = (await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${adminToken}`)).body.total;
+    expect(after).toBe(before + 3);       // 1 known + 2 new, no duplicate of the known one
+
+    const dupes = await q<{ n: number }>("SELECT COUNT(*) AS n FROM contacts WHERE email = 'known.advisor@imp.test'");
+    expect(Number(dupes[0].n)).toBe(1);
+
+    for (const e of ['brand.new1@imp.test', 'brand.new2@imp.test']) await run('DELETE FROM contacts WHERE email = ?', [e]);
+    await run('DELETE FROM contacts WHERE id = ?', [id]);
+  });
+
+  it('a partial list updates only the columns it supplies, and blanks nothing else', async () => {
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Partial Target', firm: 'Original', email: 'partial@imp.test', phone: '416-555-7000', city: 'Toronto', state: 'ON', country: 'Canada', aum_mm: 750 });
+    const id = c.body.contact.id;
+
+    const csv = 'name,email,firm\nPartial Target,partial@imp.test,Renamed Firm\n';
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ csv });
+    expect(res.body.updated).toBe(1);
+    expect(res.body.created).toBe(0);
+
+    const after = (await request(app).get(`/api/contacts/${id}`).set('Authorization', `Bearer ${adminToken}`)).body.contact;
+    expect(after.firm).toBe('Renamed Firm');    // supplied -> updated
+    expect(after.phone).toBe('416-555-7000');   // absent from the file -> preserved
+    expect(after.city).toBe('Toronto');         // absent -> preserved
+    expect(after.state).toBe('ON');             // absent -> preserved
+    expect(Number(after.aum_mm)).toBe(750);     // absent -> preserved
+    await run('DELETE FROM contacts WHERE id = ?', [id]);
+  });
+
+  it('exporting the book and re-importing it leaves the book the same size', async () => {
+    const before = (await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${viewerToken}`)).body.total;
+    const csv = (await request(app).get('/api/contacts/export.csv?priority=A').set('Authorization', `Bearer ${viewerToken}`)).text;
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ csv });
+    expect(res.body.created).toBe(0);
+    const after = (await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${viewerToken}`)).body.total;
+    expect(after).toBe(before);
+  });
+});
+
+describe('the role model holds', () => {
+  // Deliberate, per the Users panel: admins manage users and the book itself,
+  // editors work the pipeline on top of it. Documented here so it is a decision
+  // rather than an accident.
+  it('editors can create a contact; viewers cannot; import stays admin-only', async () => {
+    const ed = await request(app).post('/api/contacts').set('Authorization', `Bearer ${editorToken}`)
+      .send({ name: 'Met At Conference', firm: 'ConfCo', email: 'met@conf.test' });
+    expect(ed.status).toBe(201);
+    await run('DELETE FROM contacts WHERE id = ?', [ed.body.contact.id]);
+
+    const vw = await request(app).post('/api/contacts').set('Authorization', `Bearer ${viewerToken}`)
+      .send({ name: 'Nope', firm: 'NopeCo', email: 'nope@conf.test' });
+    expect(vw.status).toBe(403);
+
+    const imp = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${editorToken}`)
+      .send({ csv: 'name,email\nSneaky,sneaky@x.test\n' });
+    expect(imp.status).toBe(403);
+  });
+
+  it('but editors can edit the contacts that exist, and work the pipeline', async () => {
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Editable One', firm: 'EditCo', email: 'editable@x.test' });
+    const id = c.body.contact.id;
+    const edit = await request(app).patch(`/api/contacts/${id}`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ phone: '416-555-9100' });
+    expect(edit.status).toBe(200);
+    const pipe = await request(app).put(`/api/pipeline/${id}`).set('Authorization', `Bearer ${editorToken}`)
+      .send({ status: 'Contacted' });
+    expect(pipe.status).toBe(200);
+    await run('DELETE FROM contacts WHERE id = ?', [id]);
+  });
+});
+
+
+describe('firm type, email status, and foundation filters', () => {
+  it('filters by firm type, stacking with geography', async () => {
+    const meta = await request(app).get('/api/contacts/meta').set('Authorization', `Bearer ${viewerToken}`);
+    expect(meta.body.firmTypes.length).toBeGreaterThan(0);
+    expect(meta.body.emailStatuses.length).toBeGreaterThan(0);
+    const ft = meta.body.firmTypes[0];
+    const all = await request(app).get('/api/contacts?pageSize=200&firmtype=' + encodeURIComponent(ft)).set('Authorization', `Bearer ${viewerToken}`);
+    expect(all.body.total).toBeGreaterThan(0);
+    expect(all.body.rows.every((r: any) => r.firm_type === ft)).toBe(true);
+    const stacked = await request(app).get('/api/contacts?pageSize=200&' + new URLSearchParams({ firmtype: ft, country: 'United States' })).set('Authorization', `Bearer ${viewerToken}`);
+    expect(stacked.body.total).toBeLessThanOrEqual(all.body.total);
+  });
+
+  it('filters by email status', async () => {
+    const meta = await request(app).get('/api/contacts/meta').set('Authorization', `Bearer ${viewerToken}`);
+    const es = meta.body.emailStatuses[0];
+    const res = await request(app).get('/api/contacts?pageSize=200&emailstatus=' + encodeURIComponent(es)).set('Authorization', `Bearer ${viewerToken}`);
+    expect(res.body.total).toBeGreaterThan(0);
+    expect(res.body.rows.every((r: any) => r.email_status === es)).toBe(true);
+  });
+
+  it('filters by the foundation flag and applies to CSV export', async () => {
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Foundation Probe', firm: 'FdnCo', email: 'fdn@x.test', foundation: true });
+    const id = c.body.contact.id;
+    const res = await request(app).get('/api/contacts?foundation=true&q=Foundation Probe').set('Authorization', `Bearer ${viewerToken}`);
+    expect(res.body.total).toBe(1);
+    const csv = await request(app).get('/api/contacts/export.csv?foundation=true').set('Authorization', `Bearer ${viewerToken}`);
+    expect(csv.status).toBe(200);
+    expect(csv.text).toContain('Foundation Probe');
+    await run('DELETE FROM contacts WHERE id = ?', [id]);
+  });
+});
+
+
+describe('desk report (grouped rollups over the current filters)', () => {
+  it('grouping by firm type reconciles exactly with the list', async () => {
+    const rep = await request(app).get('/api/contacts/report?by=firmtype').set('Authorization', `Bearer ${viewerToken}`);
+    expect(rep.status).toBe(200);
+    const total = rep.body.rows.reduce((a: number, r: any) => a + Number(r.contacts), 0);
+    const list = await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${viewerToken}`);
+    expect(total).toBe(list.body.total);
+    const manual = await q<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM contacts WHERE COALESCE(NULLIF(firm_type,''),'x') = ?",
+      [rep.body.rows[0].bucket]
+    );
+    expect(Number(rep.body.rows[0].contacts)).toBe(Number(manual[0].n));
+  });
+
+  it('honors the same filters as the list', async () => {
+    const qs = 'country=' + encodeURIComponent('United States');
+    const rep = await request(app).get('/api/contacts/report?by=tier&' + qs).set('Authorization', `Bearer ${viewerToken}`);
+    const total = rep.body.rows.reduce((a: number, r: any) => a + Number(r.contacts), 0);
+    const list = await request(app).get('/api/contacts?pageSize=1&' + qs).set('Authorization', `Bearer ${viewerToken}`);
+    expect(total).toBe(list.body.total);
+  });
+
+  it('rolls my open pipeline dollars into the right bucket, and rejects unknown dimensions', async () => {
+    const c = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Rollup Probe', firm: 'RollCo', email: 'roll@x.test', firm_type: 'Wirehouse' });
+    const id = c.body.contact.id;
+    await request(app).put(`/api/pipeline/${id}`).set('Authorization', `Bearer ${adminToken}`).send({ status: 'Meeting', opp: 125 });
+    const rep = await request(app).get('/api/contacts/report?by=firmtype&q=rollup probe').set('Authorization', `Bearer ${adminToken}`);
+    const row = rep.body.rows.find((r: any) => r.bucket === 'Wirehouse');
+    expect(Number(row.in_pipeline)).toBe(1);
+    expect(Number(row.open_opp)).toBe(125);
+    const bad = await request(app).get('/api/contacts/report?by=DROP TABLE').set('Authorization', `Bearer ${viewerToken}`);
+    expect(bad.status).toBe(400);
+    await run('DELETE FROM contacts WHERE id = ?', [id]);
+  });
+});
+
+
+describe('temporary passwords must be changed at first sign-in', () => {
+  it('an admin-created account signs in with mustChange, and self-change clears it', async () => {
+    await request(app).post('/api/auth/users').set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'fresh@ninepoint.test', password: 'TempHandout1', role: 'viewer' });
+    const l1 = await request(app).post('/api/auth/login').send({ email: 'fresh@ninepoint.test', password: 'TempHandout1' });
+    expect(l1.body.user.mustChange).toBe(true);
+    const change = await request(app).post('/api/auth/password').set('Authorization', `Bearer ${l1.body.token}`)
+      .send({ currentPassword: 'TempHandout1', newPassword: 'MyOwnChoice22' });
+    expect(change.status).toBe(200);
+    const l2 = await request(app).post('/api/auth/login').send({ email: 'fresh@ninepoint.test', password: 'MyOwnChoice22' });
+    expect(l2.body.user.mustChange).toBe(false);
+    await run("DELETE FROM users WHERE email = 'fresh@ninepoint.test'");
+  });
+
+  it('an admin resetting someone re-arms the requirement', async () => {
+    await request(app).post('/api/auth/users').set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'rearm@ninepoint.test', password: 'TempHandout1', role: 'viewer' });
+    const l1 = await request(app).post('/api/auth/login').send({ email: 'rearm@ninepoint.test', password: 'TempHandout1' });
+    await request(app).post('/api/auth/password').set('Authorization', `Bearer ${l1.body.token}`)
+      .send({ currentPassword: 'TempHandout1', newPassword: 'MyOwnChoice22' });
+    const u = await one<{ id: number }>("SELECT id FROM users WHERE email = 'rearm@ninepoint.test'");
+    await request(app).post(`/api/auth/users/${u!.id}/password`).set('Authorization', `Bearer ${adminToken}`)
+      .send({ password: 'AdminHandout9' });
+    const l2 = await request(app).post('/api/auth/login').send({ email: 'rearm@ninepoint.test', password: 'AdminHandout9' });
+    expect(l2.body.user.mustChange).toBe(true);
+    await run("DELETE FROM users WHERE email = 'rearm@ninepoint.test'");
+  });
+
+  it('test-email is admin-only and reports missing SMTP clearly', async () => {
+    const asEditor = await request(app).post('/api/auth/test-email').set('Authorization', `Bearer ${editorToken}`);
+    expect(asEditor.status).toBe(403);
+    const asAdmin = await request(app).post('/api/auth/test-email').set('Authorization', `Bearer ${adminToken}`);
+    expect(asAdmin.status).toBe(400);
+    expect(asAdmin.body.error).toContain('SMTP');
   });
 });
