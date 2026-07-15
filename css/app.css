@@ -285,6 +285,36 @@ button{font-family:inherit;cursor:pointer}
    list rows that read as cards.
    ========================================================================== */
 
+/* The mobile sheet wrapper must not exist on desktop. `display:contents` removes
+   it from layout entirely, so the buttons stay direct flex children of .topbar
+   and lay out exactly as they did before the wrapper was introduced. The mobile
+   media query below overrides this with display:flex to build the sheet. */
+.tb-actions{display:contents}
+
+/* A `1fr` grid track carries min-width:auto, so the seven-column contact table
+   set a hard floor on how narrow the page could get: at a 1024px window the page
+   still rendered 1257px wide and scrolled sideways. minmax(0,1fr) lets the main
+   column shrink, and min-width:0 on the cells lets its columns shrink with it. */
+#app{grid-template-columns:minmax(0,1fr)}
+.body{grid-template-columns:230px minmax(0,1fr)}
+.main{min-width:0}
+.ghead > *, .row > *{min-width:0}
+
+/* The topbar is a nowrap flex row. Three things have to hold for it to survive a
+   1280px laptop: the buttons must never shrink or break their labels, the search
+   box must be allowed to shrink (an <input> has an intrinsic min-width that stops
+   it, so min-width:0 is required), and the user block must not wrap its email
+   onto a second line, which is what was stretching the bar to two rows. */
+.topbar .tb-btn{flex:0 0 auto;white-space:nowrap}
+.search{min-width:0}
+.search input{min-width:0}
+.topbar .tb-user{flex:0 0 auto;white-space:nowrap;margin-left:auto}
+.topbar .tb-user #userEmail{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+
+/* Below a certain width the email is the least useful thing in the bar: the role
+   badge and Sign out carry the meaning, and Account shows the full address. */
+@media(min-width:861px) and (max-width:1450px){ .topbar .tb-user #userEmail{display:none} }
+
 /* controls that only exist on mobile */
 .icon-btn{display:none;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px;line-height:0;cursor:pointer}
 .icon-btn:hover{background:rgba(255,255,255,.2)}
@@ -294,15 +324,22 @@ button{font-family:inherit;cursor:pointer}
 .scrim{display:none;position:fixed;inset:0;background:rgba(14,33,56,.5);z-index:29}
 .scrim.show{display:block}
 
-@media(max-width:860px){
-  html,body{overflow-x:hidden}
 
-  /* ---- top bar: brand + search + hamburger. Everything else moves into a sheet ---- */
+/* ---------------------------------------------------------------------------
+   TIER 1 (<= 1250px): the topbar alone collapses.
+   Eight buttons plus brand, search, user and Sign out need about 1257px of
+   unshrinkable width. Below that the bar cannot fit however much the search box
+   gives up, and because #app is a grid its column inflated to that width and
+   scrolled the whole page sideways. So the actions move into a slide-in sheet
+   here, while the filter rail and the contact table stay exactly as they are.
+   --------------------------------------------------------------------------- */
+@media(max-width:1250px){
   .icon-btn{display:inline-flex;align-items:center;justify-content:center}
-  .topbar{gap:10px;padding:10px 12px;flex-wrap:nowrap}
+  .topbar{gap:10px;padding:10px 14px}
   .topbar .ttl{font-size:14px;white-space:nowrap}
   .topbar .sp{display:none}
-  .search{max-width:none;min-width:0;padding:7px 10px}
+  .search{max-width:none;min-width:0}
+  .topbar .tb-user{display:none}          /* it lives in the sheet at this width */
 
   .tb-actions{
     position:fixed;top:0;right:0;bottom:0;width:min(280px,84vw);
@@ -316,6 +353,16 @@ button{font-family:inherit;cursor:pointer}
   .tb-actions .tb-btn{width:100%;text-align:left;padding:12px 14px;font-size:14px;min-height:44px}
   .tb-actions .tb-user{order:-1;display:flex;flex-direction:column;gap:4px;align-items:flex-start;
     padding:0 2px 14px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,.16);font-size:12.5px}
+  .tb-actions .tb-user #userEmail{display:block;max-width:none}
+}
+
+/* ---------------------------------------------------------------------------
+   TIER 2 (<= 860px): everything else follows. Filter rail becomes a sheet, the
+   seven-column table becomes cards, drawer and modals go full screen.
+   --------------------------------------------------------------------------- */
+@media(max-width:860px){
+  html,body{overflow-x:hidden}
+
 
   /* ---- filters: a reachable sheet, not display:none ---- */
   .body{grid-template-columns:1fr}
@@ -376,3 +423,89 @@ button{font-family:inherit;cursor:pointer}
   .topbar .ttl{display:none}          /* the spine and search carry the brand at this width */
   .row > *:nth-child(3){max-width:100%}
 }
+
+/* ---- audit log ---- */
+.aud-bar{display:flex;gap:8px;margin:12px 0 4px;flex-wrap:wrap}
+.aud-bar input{flex:1;min-width:180px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit}
+.aud-bar select{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit}
+.aud-wrap{max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:9px;margin-top:8px}
+table.aud{width:100%;border-collapse:collapse;font-size:12.5px}
+table.aud thead th{position:sticky;top:0;background:var(--paper);text-align:left;padding:9px 11px;
+  font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);z-index:1}
+table.aud td{padding:9px 11px;border-bottom:1px solid #f0eee7;vertical-align:top}
+table.aud tr:last-child td{border-bottom:none}
+.aud-when{white-space:nowrap;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:#5f6c7c}
+.aud-act{display:inline-block;padding:1px 7px;border-radius:9px;background:#eef1f5;font-size:11px;font-weight:600;color:#33404f}
+.aud-act.aud-hot{background:#B0442E14;color:#B0442E}
+.aud-on{color:#5f6c7c;white-space:nowrap}
+.aud-det{color:#4a5563;word-break:break-word}
+.aud-empty{padding:20px;text-align:center;color:var(--muted)}
+@media(max-width:860px){ .aud-on,.aud-det{display:none} .aud-wrap{max-height:64vh} }
+
+/* ---- command palette ---- */
+.kbd-hint{margin-left:auto;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:rgba(255,255,255,.65);
+  border-radius:6px;font-size:10.5px;font-weight:600;letter-spacing:.04em;padding:2px 7px;cursor:pointer;white-space:nowrap}
+.kbd-hint:hover{background:rgba(255,255,255,.16);color:#fff}
+@media(max-width:860px){ .kbd-hint{display:none} }
+.palette{position:fixed;inset:0;background:rgba(14,33,56,.55);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 0}
+.palette.hidden{display:none}
+.pal-card{width:min(620px,100%);background:#fff;border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.4);overflow:hidden}
+#palInput{width:100%;border:none;outline:none;padding:17px 20px;font-size:15.5px;font-family:inherit;border-bottom:1px solid var(--line);box-sizing:border-box}
+.pal-list{max-height:min(430px,52vh);overflow-y:auto;padding:6px}
+.pal-sect{padding:9px 14px 4px;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--brass);font-weight:700}
+.pal-item{display:flex;align-items:center;gap:11px;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13.5px;color:var(--ink)}
+.pal-item .pi-sub{color:var(--muted);font-size:12px;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%}
+.pal-item.active{background:var(--ink);color:#fff}
+.pal-item.active .pi-sub{color:rgba(255,255,255,.65)}
+.pal-item .pi-k{font-size:15px;width:20px;text-align:center;flex:0 0 auto}
+.pal-empty{padding:18px 14px;color:var(--muted);font-size:13px}
+.pal-foot{display:flex;gap:18px;padding:9px 16px;border-top:1px solid var(--line);background:var(--paper);font-size:11px;color:var(--muted)}
+.pal-foot b{font-weight:700;color:#4a5563}
+
+/* ---- new contact ---- */
+.nc-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0 4px}
+.nc-grid input,.nc-grid select{padding:10px 11px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;min-width:0}
+.nc-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.sf-btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+@media(max-width:560px){ .nc-grid{grid-template-columns:1fr} }
+
+/* ---- meeting brief: exists only on paper ---- */
+#printBrief{display:none}
+@media print{
+  body > *:not(#printBrief){display:none !important}
+  #printBrief{display:block;font-family:Georgia,'Times New Roman',serif;color:#111;padding:0 6px}
+  .pb-rule{height:4px;background:#C49E3E;margin:0 0 14px}
+  .pb-head h1{font-size:24px;margin:0 0 2px}
+  .pb-head .pb-sub{font-size:13px;color:#444;margin:0 0 16px}
+  .pb-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px;font-size:12.5px;margin-bottom:16px}
+  .pb-grid div b{display:inline-block;min-width:88px;color:#555;font-weight:600}
+  .pb-sect{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#8a6d1d;border-bottom:1px solid #ddd;padding-bottom:3px;margin:16px 0 7px}
+  table.pb{width:100%;border-collapse:collapse;font-size:12px}
+  table.pb th{text-align:left;color:#555;font-weight:600;padding:3px 8px 3px 0;border-bottom:1px solid #ccc}
+  table.pb td{padding:4px 8px 4px 0;border-bottom:1px solid #eee;vertical-align:top}
+  .pb-note{font-size:12.5px;white-space:pre-wrap}
+  .pb-foot{margin-top:22px;font-size:10.5px;color:#777;border-top:1px solid #ddd;padding-top:6px}
+  .pb-empty{font-size:12px;color:#777;font-style:italic}
+}
+
+/* ---- report ---- */
+.rep-scope{align-self:center;font-size:12px;color:var(--muted);flex:1}
+.rep-track{background:#eee7d6;border-radius:5px;height:9px;overflow:hidden}
+.rep-fill{background:var(--brass);height:100%}
+td.rep-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---- pipeline board ---- */
+.board-card{max-width:1180px;width:96vw}
+.board-cols{display:flex;gap:10px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
+.bcol{flex:1;min-width:170px;background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:9px}
+.bcol.dragover{outline:2px dashed var(--brass);outline-offset:-4px}
+.bcol h4{margin:0 0 2px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline}
+.bcol h4 .bsum{font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0}
+.bcards{display:flex;flex-direction:column;gap:7px;min-height:42px;margin-top:7px}
+.bcard{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px;cursor:grab;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.bcard.dragging{opacity:.45}
+.bcard .bn{font-weight:700;font-size:13px}
+.bcard .bf{font-size:11.5px;color:var(--muted);margin-top:1px}
+.bcard .bm{font-size:11.5px;margin-top:4px;display:flex;gap:10px;color:#4a5563}
+.bempty{font-size:11.5px;color:var(--muted);font-style:italic;padding:6px 2px}
+@media(max-width:860px){ .board-cols{flex-direction:column} .bcol{width:100%} }

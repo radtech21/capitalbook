@@ -61,15 +61,18 @@
     <span class="spine"></span><span class="ttl">Capital Book</span>
     <div class="search">
       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4"/></svg>
+      <button id="palHint" class="kbd-hint" title="Command palette" type="button">Ctrl K</button>
       <input id="q" type="text" placeholder="Search name, firm, email, city">
     </div>
     <div class="sp"></div>
     <div class="tb-actions" id="tbActions">
     <button id="feedBtn" class="tb-btn">Feed</button>
+    <button id="boardBtn" class="tb-btn">Board</button>
     <button id="tasksBtn" class="tb-btn">Tasks <span id="taskBadge" class="badge hidden">0</span></button>
     <button id="importBtn" class="tb-btn hidden">Import</button>
     <button id="tplBtn" class="tb-btn hidden">Templates</button>
     <button id="usersBtn" class="tb-btn hidden">Users</button>
+    <button id="auditBtn" class="tb-btn hidden">Audit</button>
     <button id="acctBtn" class="tb-btn">Account</button>
     <button id="dashBtn" class="tb-btn">Dashboard</button>
     <div class="tb-user"><span id="userEmail"></span><span id="userRole" class="tb-role"></span></div>
@@ -78,6 +81,79 @@
   </div>
   <div id="scrim" class="scrim"></div>
 
+<!-- REPORT MODAL -->
+<div id="repModal" class="modal hidden">
+  <div class="modal-card wide">
+    <button class="modal-close" id="repClose">&times;</button>
+    <h2>Report</h2>
+    <div class="modal-sub">The view you have filtered right now, grouped and rolled up. Change the sidebar filters and reopen to slice differently.</div>
+    <div class="aud-bar">
+      <select id="repBy">
+        <option value="firmtype">By firm type</option>
+        <option value="segment">By segment</option>
+        <option value="country">By country</option>
+        <option value="state">By province / state</option>
+        <option value="tier">By AUM tier</option>
+        <option value="priority">By priority</option>
+        <option value="emailstatus">By email status</option>
+        <option value="source">By list</option>
+        <option value="status">By my pipeline status</option>
+        <option value="owner">By owner</option>
+      </select>
+      <span id="repScope" class="rep-scope"></span>
+      <button id="repCsv" class="sf-btn">Export CSV</button>
+    </div>
+    <div class="aud-wrap"><table class="aud"><thead><tr>
+      <th style="width:34%">Group</th><th>Contacts</th><th style="width:22%"></th><th>AUM</th><th>In my pipeline</th><th>Open opp</th>
+    </tr></thead><tbody id="repRows"></tbody></table></div>
+  </div>
+</div>
+
+<!-- PIPELINE BOARD -->
+<div id="boardModal" class="modal hidden">
+  <div class="modal-card board-card">
+    <button class="modal-close" id="boardClose">&times;</button>
+    <h2>Pipeline board</h2>
+    <div class="modal-sub" id="boardSub">Your pipeline, one column per stage. Drag a card to move it.</div>
+    <div id="boardCols" class="board-cols"></div>
+  </div>
+</div>
+
+<!-- NEW CONTACT MODAL -->
+<div id="ncModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="ncClose">&times;</button>
+    <h2>New contact</h2>
+    <div class="modal-sub">Only a name is required. Everything else can be filled in later from the drawer.</div>
+    <div class="nc-grid">
+      <input id="ncName" placeholder="Full name *">
+      <input id="ncTitle" placeholder="Title">
+      <input id="ncFirm" placeholder="Firm">
+      <select id="ncSeg"><option value="">Segment...</option></select>
+      <input id="ncEmail" placeholder="Email">
+      <input id="ncPhone" placeholder="Phone">
+      <input id="ncCity" placeholder="City">
+      <input id="ncState" placeholder="Province / State">
+      <input id="ncCountry" placeholder="Country">
+      <select id="ncPri"><option value="">Priority...</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+    </div>
+    <div id="ncMsg" class="sf-msg"></div>
+    <div class="nc-foot"><button id="ncCancel" class="sf-btn">Cancel</button><button id="ncCreate" class="sf-btn primary">Create contact</button></div>
+  </div>
+</div>
+
+<!-- PRINT BRIEF (only rendered by the print stylesheet) -->
+<div id="printBrief"></div>
+
+<!-- COMMAND PALETTE -->
+<div id="palette" class="palette hidden">
+  <div class="pal-card">
+    <input id="palInput" placeholder="Jump to a contact, or type an action..." autocomplete="off" spellcheck="false">
+    <div id="palList" class="pal-list"></div>
+    <div class="pal-foot"><span><b>&uarr;&darr;</b> navigate</span><span><b>Enter</b> open</span><span><b>Esc</b> close</span></div>
+  </div>
+</div>
+
   <div class="body">
     <aside class="filters" id="filters">
       <button id="filtClose" class="filt-close" aria-label="Close filters">&times;</button>
@@ -85,7 +161,9 @@
       <select id="viewSel"><option value="">Apply a saved view…</option></select>
       <button class="reset" id="saveViewBtn" style="margin-top:6px">Save current view</button>
       <h3>List</h3><select id="fSource"><option value="">All lists</option></select>
+      <h3>Email status</h3><select id="fEmailStatus"><option value="">Any email status</option></select>
       <h3>Segment</h3><select id="fSeg"><option value="">All segments</option></select>
+      <h3>Firm type</h3><select id="fFirmType"><option value="">All firm types</option></select>
       <h3>Priority</h3><select id="fPri"><option value="">All priorities</option></select>
       <h3>Country</h3><select id="fCountry"><option value="">All countries</option></select>
       <h3>Province / State</h3><select id="fState" disabled><option value="">Select a country first</option></select>
@@ -98,6 +176,7 @@
       <label class="chk"><input type="checkbox" id="fReach"> Reachable only</label>
       <label class="chk"><input type="checkbox" id="fUhnw"> UHNW</label>
       <label class="chk"><input type="checkbox" id="fInst"> Institutional</label>
+      <label class="chk"><input type="checkbox" id="fFound"> Foundation</label>
       <label class="chk"><input type="checkbox" id="fFlag"> Has data flag</label>
       <label class="chk"><input type="checkbox" id="fDue"> Follow-ups due</label>
       <label class="chk"><input type="checkbox" id="fNoEmail"> No email on file</label>
@@ -122,6 +201,8 @@
           <option value="n">Name</option>
         </select>
         <button class="dir" id="dirBtn" title="Toggle direction">desc</button>
+        <button class="dir" id="repBtn" title="Group the current view by a dimension">Report</button>
+        <button class="dir hidden" id="newBtn" title="Add a contact to the book">New contact</button>
         <button class="dir" id="exportBtn" title="Export filtered set to CSV">Export CSV</button>
       </div>
       <div id="bulkBar" class="bulkbar hidden">
@@ -162,6 +243,7 @@
   <div class="modal-card">
     <button class="modal-close" id="tasksClose">&times;</button>
     <h2>My tasks</h2>
+    <button id="icsBtn" class="sf-btn" style="position:absolute;top:16px;right:52px">Calendar (.ics)</button>
     <div class="modal-sub"><b id="tOpen">0</b> open · <b id="tOver">0</b> overdue · <b id="tDone">0</b> done</div>
     <div class="task-add" id="taskAddWrap">
       <input id="taskTitle" type="text" placeholder="New task (e.g. Follow up with Citadel IR)">
@@ -217,6 +299,7 @@
   <div class="modal-card">
     <button class="modal-close" id="usersClose">&times;</button>
     <h2>Team members</h2>
+    <button id="testMailBtn" class="sf-btn" style="position:absolute;top:16px;right:52px">Send test email</button>
     <div class="modal-sub">Self-registration is off: add people here. <b>admin</b> manages users and data, <b>editor</b> writes pipeline, activities, tasks, tags, and templates, <b>viewer</b> is read-only.</div>
     <div class="uadd">
       <input id="uaName" placeholder="Name">
@@ -227,6 +310,28 @@
     </div>
     <div id="uMsg" class="sf-msg"></div>
     <div id="usersList"></div>
+  </div>
+</div>
+
+<!-- AUDIT MODAL -->
+<div id="auditModal" class="modal hidden">
+  <div class="modal-card wide">
+    <button class="modal-close" id="auditClose">&times;</button>
+    <h2>Audit log</h2>
+    <div class="modal-sub">Every material action is recorded: who did it, to what, and when. Newest first.</div>
+    <div class="aud-bar">
+      <input id="audSearch" placeholder="Filter by person, action, or entity">
+      <select id="audLimit">
+        <option value="100">Last 100</option>
+        <option value="250" selected>Last 250</option>
+        <option value="1000">Last 1000</option>
+      </select>
+      <button id="audExport" class="sf-btn">Export CSV</button>
+    </div>
+    <div id="audMsg" class="sf-msg"></div>
+    <div class="aud-wrap"><table class="aud"><thead><tr>
+      <th>When</th><th>Who</th><th>Action</th><th>On</th><th>Detail</th>
+    </tr></thead><tbody id="audRows"></tbody></table></div>
   </div>
 </div>
 
