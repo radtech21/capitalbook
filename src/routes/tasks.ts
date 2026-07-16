@@ -80,10 +80,10 @@ tasksRouter.patch('/:id', requireAuth, requireRole('editor'), async (req, res) =
 // DELETE /api/tasks/:id
 tasksRouter.delete('/:id', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
-  const existing = await one<{ user_id: number }>('SELECT user_id FROM tasks WHERE id = ?', [id]);
+  const existing = await one<{ user_id: number; title: string }>('SELECT user_id, title FROM tasks WHERE id = ?', [id]);
   if (!existing) return res.status(404).json({ error: 'Task not found' });
   if (existing.user_id !== req.user!.uid && req.user!.role !== 'admin') return res.status(403).json({ error: 'Not your task' });
   await run('DELETE FROM tasks WHERE id = ?', [id]);
-  await writeAudit(req.user, 'task_delete', 'task', id);
+  await writeAudit(req.user, 'task_delete', 'task', id, { title: existing.title });
   return res.json({ ok: true });
 });

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { q, one, run, tx } from '../db.js';
-import { requireAuth, requireRole } from '../auth.js';
+import { requireAuth, requireRole, requireSuperAdmin } from '../auth.js';
 import { writeAudit } from '../audit.js';
 
 export const contactsRouter = Router();
@@ -16,10 +16,22 @@ const BOOL_FILTERS: Record<string, string> = {
 // columns that may be written by create/edit/import (id handled separately)
 const WRITABLE = [
   'name', 'title', 'firm', 'segment', 'priority', 'lead_score', 'email', 'email_status', 'phone',
-  'city', 'state', 'country', 'sub_region', 'aum_mm', 'aum_tier', 'net_worth_mm', 'firm_type',
+  'city', 'address', 'state', 'country', 'sub_region', 'aum_mm', 'aum_tier', 'net_worth_mm', 'firm_type',
   'state_rank', 'rank_movement', 'uhnw', 'institutional', 'foundation', 'client_types', 'reachable',
   'source_list', 'data_flags',
 ] as const;
+
+// The country filter offers exactly three buckets in the UI — Canada, USA, Other —
+// rather than the ~40 raw country strings in the data. 'Other' covers everything
+// that isn't Canada or the United States, so the three buckets always add up to
+// the whole book. Falls back to an exact match for any other value (e.g. a saved
+// view stored before this change, which may hold a raw country name).
+function countryBucketWhere(bucket: string, col = 'c.country'): { sql: string; params: unknown[] } {
+  if (bucket === 'Canada') return { sql: `${col} = ?`, params: ['Canada'] };
+  if (bucket === 'USA') return { sql: `${col} = ?`, params: ['United States'] };
+  if (bucket === 'Other') return { sql: `${col} NOT IN ('Canada', 'United States')`, params: [] };
+  return { sql: `${col} = ?`, params: [bucket] };
+}
 
 // shared filter builder used by list and CSV export. Returns the WHERE clause and
 // its params (the pipeline join's user_id is prepended by the caller).
@@ -36,9 +48,13 @@ function buildFilter(req: any): { whereSql: string; params: unknown[] } {
     const like = '%' + term + '%';
     params.push(like, like, like, like, like, like);
   }
-  for (const [param, col] of [['segment', 'c.segment'], ['priority', 'c.priority'], ['country', 'c.country'], ['state', 'c.state'], ['city', 'c.city'], ['tier', 'c.aum_tier'], ['source', 'c.source_list'], ['firmtype', 'c.firm_type'], ['emailstatus', 'c.email_status']] as const) {
+  for (const [param, col] of [['segment', 'c.segment'], ['priority', 'c.priority'], ['state', 'c.state'], ['city', 'c.city'], ['tier', 'c.aum_tier'], ['source', 'c.source_list'], ['firmtype', 'c.firm_type'], ['emailstatus', 'c.email_status']] as const) {
     const v = req.query[param];
     if (v) { where.push(`${col} = ?`); params.push(String(v)); }
+  }
+  if (req.query.country) {
+    const { sql, params: bucketParams } = countryBucketWhere(String(req.query.country));
+    where.push(sql); params.push(...bucketParams);
   }
   for (const [param, col] of Object.entries(BOOL_FILTERS)) {
     if (req.query[param] === 'true' || req.query[param] === '1') where.push(`${col} = 1`);
@@ -130,17 +146,18 @@ contactsRouter.get('/meta', requireAuth, async (req, res) => {
   // so the places you actually cover lead the dropdown.
   const country = req.query.country ? String(req.query.country) : '';
   const stateSel = req.query.state ? String(req.query.state) : '';
+  const countryClause = country ? countryBucketWhere(country, 'country') : null;
 
   const states = await q<{ v: string; n: number }>(
     `SELECT state AS v, COUNT(*) AS n FROM contacts
-      WHERE state <> ''${country ? ' AND country = ?' : ''}
+      WHERE state <> ''${countryClause ? ' AND ' + countryClause.sql : ''}
       GROUP BY state ORDER BY n DESC, v ASC`,
-    country ? [country] : []
+    countryClause ? countryClause.params : []
   );
 
   const cityWhere: string[] = ["city <> ''"];
   const cityParams: unknown[] = [];
-  if (country) { cityWhere.push('country = ?'); cityParams.push(country); }
+  if (countryClause) { cityWhere.push(countryClause.sql); cityParams.push(...countryClause.params); }
   if (stateSel) { cityWhere.push('state = ?'); cityParams.push(stateSel); }
   const cities = await q<{ v: string; n: number }>(
     `SELECT city AS v, COUNT(*) AS n FROM contacts
@@ -176,14 +193,14 @@ contactsRouter.get('/export.csv', requireAuth, async (req, res) => {
   const join = 'LEFT JOIN pipeline p ON p.contact_id = c.id AND p.user_id = ?';
   const rows = await q<Record<string, unknown>>(
     `SELECT c.id, c.name, c.title, c.firm, c.segment, c.priority, c.lead_score, c.email,
-            c.email_status, c.phone, c.city, c.state, c.country, c.aum_mm, c.aum_tier,
+            c.email_status, c.phone, c.address, c.city, c.state, c.country, c.aum_mm, c.aum_tier,
             c.firm_type, c.source_list, c.data_flags,
             p.status AS pipeline_status, p.due AS follow_up, p.opp AS opportunity_mm, p.poc, p.note
      FROM contacts c ${join} ${whereSql}
      ORDER BY (c.aum_mm IS NULL), c.aum_mm DESC, c.id ASC`,
     [req.user!.uid, ...params]
   );
-  const headers = ['id', 'name', 'title', 'firm', 'segment', 'priority', 'lead_score', 'email', 'email_status', 'phone', 'city', 'state', 'country', 'aum_mm', 'aum_tier', 'firm_type', 'source_list', 'data_flags', 'pipeline_status', 'follow_up', 'opportunity_mm', 'poc', 'note'];
+  const headers = ['id', 'name', 'title', 'firm', 'segment', 'priority', 'lead_score', 'email', 'email_status', 'phone', 'address', 'city', 'state', 'country', 'aum_mm', 'aum_tier', 'firm_type', 'source_list', 'data_flags', 'pipeline_status', 'follow_up', 'opportunity_mm', 'poc', 'note'];
   const lines = [headers.join(',')];
   for (const r of rows) lines.push(headers.map((h) => csvCell(r[h])).join(','));
   await writeAudit(req.user, 'export_csv', 'contacts', rows.length);
@@ -232,8 +249,8 @@ contactsRouter.patch('/:id', requireAuth, requireRole('editor'), async (req, res
   return res.json({ contact: await one('SELECT * FROM contacts WHERE id = ?', [id]) });
 });
 
-// POST /api/contacts/import -> bulk upsert (admin). Body: { contacts: [...] } or { csv: "..." }
-contactsRouter.post('/import', requireAuth, requireRole('admin'), async (req, res) => {
+// POST /api/contacts/import -> bulk upsert (super admin only). Body: { contacts: [...] } or { csv: "..." }
+contactsRouter.post('/import', requireAuth, requireSuperAdmin, async (req, res) => {
   let arr: unknown;
   if (req.body && typeof req.body.csv === 'string') {
     try { arr = csvToObjects(req.body.csv); }

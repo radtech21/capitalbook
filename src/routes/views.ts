@@ -37,10 +37,10 @@ viewsRouter.post('/', requireAuth, async (req, res) => {
 // DELETE /api/views/:id -> owner or admin
 viewsRouter.delete('/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const row = await one<{ user_id: number }>('SELECT user_id FROM saved_views WHERE id = ?', [id]);
+  const row = await one<{ user_id: number; name: string }>('SELECT user_id, name FROM saved_views WHERE id = ?', [id]);
   if (!row) return res.status(404).json({ error: 'View not found' });
   if (row.user_id !== req.user!.uid && req.user!.role !== 'admin') return res.status(403).json({ error: 'Not your view' });
   await run('DELETE FROM saved_views WHERE id = ?', [id]);
-  await writeAudit(req.user, 'view_delete', 'view', id);
+  await writeAudit(req.user, 'view_delete', 'view', id, { name: row.name });
   return res.json({ ok: true });
 });

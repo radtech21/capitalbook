@@ -186,7 +186,7 @@ authRouter.post('/users', requireAuth, requireRole('admin'), async (req, res) =>
 authRouter.delete('/users/:id', requireAuth, requireRole('admin'), async (req, res) => {
   const id = Number(req.params.id);
   if (id === req.user!.uid) return res.status(400).json({ error: 'You cannot remove your own account' });
-  const target = await one<{ id: number; email: string; role: Role }>('SELECT id, email, role FROM users WHERE id = ?', [id]);
+  const target = await one<{ id: number; email: string; name: string; role: Role }>('SELECT id, email, name, role FROM users WHERE id = ?', [id]);
   if (!target) return res.status(404).json({ error: 'User not found' });
   if (target.role === 'admin') {
     const admins = await one<{ n: number }>("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'");
@@ -194,7 +194,7 @@ authRouter.delete('/users/:id', requireAuth, requireRole('admin'), async (req, r
   }
   // contacts they own fall back to unowned; their pipeline rows go with them
   await run('DELETE FROM users WHERE id = ?', [id]);
-  await writeAudit(req.user, 'delete_user', 'user', id, { email: target.email });
+  await writeAudit(req.user, 'delete_user', 'user', id, { name: target.name, email: target.email });
   return res.json({ ok: true });
 });
 

@@ -43,10 +43,14 @@ activitiesRouter.post('/contacts/:id/activities', requireAuth, requireRole('edit
 // DELETE /api/activities/:id -> remove (author or admin)
 activitiesRouter.delete('/activities/:id', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
-  const row = await one<{ user_id: number }>('SELECT user_id FROM activities WHERE id = ?', [id]);
+  const row = await one<{ user_id: number; type: string; contact_id: number; contact_name: string }>(
+    `SELECT a.user_id, a.type, a.contact_id, c.name AS contact_name
+     FROM activities a LEFT JOIN contacts c ON c.id = a.contact_id WHERE a.id = ?`,
+    [id]
+  );
   if (!row) return res.status(404).json({ error: 'Not found' });
   if (row.user_id !== req.user!.uid && req.user!.role !== 'admin') return res.status(403).json({ error: 'Only the author or an admin can delete this' });
   await run('DELETE FROM activities WHERE id = ?', [id]);
-  await writeAudit(req.user, 'activity_delete', 'activity', id);
+  await writeAudit(req.user, 'activity_delete', 'activity', id, { type: row.type, contact: row.contact_name });
   return res.json({ ok: true });
 });

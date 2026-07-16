@@ -360,8 +360,14 @@ Then, signed in as an admin, open Users and remove the old demo accounts
 cd capitalback
 npm install
 cp .env.example .env   # fill it in
-npm run setup          # migrate + full seed (contacts, templates, the three accounts)
+npm run setup          # schema migrations, then full seed, then remaining migrations
 ```
+
+`setup` applies schema-only migrations first, then seeds (contacts, templates,
+the three accounts), then runs the remaining migrations — several of those
+(the advisor-team/address enrichment, the AUM refresh) are `UPDATE`/`INSERT`
+statements keyed to specific seeded contact ids, so they need contacts to
+already exist or they silently apply to zero rows.
 
 ## Environment
 

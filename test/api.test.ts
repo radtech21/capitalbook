@@ -12,6 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = createApp();
 
 let adminToken = '';
+let superAdminToken = '';
 let editorToken = '';
 let viewerToken = '';
 let sampleContactId = 0;
@@ -52,9 +53,11 @@ beforeAll(async () => {
   await pool.query(`INSERT INTO contacts (${CONTACT_COLS.join(',')}) VALUES ?`, [values]);
   sampleContactId = seed[0].id;
 
-  // seed an editor and a viewer directly
+  // seed an editor and a viewer directly, plus the one super-admin account
+  // (contacts import is restricted to this exact email, not just any admin)
   await run('INSERT INTO users (email,password_hash,name,role) VALUES (?,?,?,?)', ['editor@test.local', hashPassword('password123'), 'Editor', 'editor']);
   await run('INSERT INTO users (email,password_hash,name,role) VALUES (?,?,?,?)', ['viewer@test.local', hashPassword('password123'), 'Viewer', 'viewer']);
+  await run('INSERT INTO users (email,password_hash,name,role) VALUES (?,?,?,?)', ['admin@capitalbook.local', hashPassword('password123'), 'Super Admin', 'admin']);
 });
 
 afterAll(async () => {
@@ -101,7 +104,9 @@ describe('auth', () => {
     editorToken = e.body.token;
     const v = await request(app).post('/api/auth/login').send({ email: 'viewer@test.local', password: 'password123' });
     viewerToken = v.body.token;
-    expect(editorToken && viewerToken).toBeTruthy();
+    const s = await request(app).post('/api/auth/login').send({ email: 'admin@capitalbook.local', password: 'password123' });
+    superAdminToken = s.body.token;
+    expect(editorToken && viewerToken && superAdminToken).toBeTruthy();
   });
 
   it('rejects bad credentials', async () => {
@@ -338,9 +343,9 @@ describe('CSV export', () => {
 });
 
 describe('CSV / bulk import', () => {
-  it('lets admins bulk upsert contacts', async () => {
+  it('lets the super admin bulk upsert contacts', async () => {
     const before = (await request(app).get('/api/health')).body.contacts;
-    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ contacts: [
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${superAdminToken}`).send({ contacts: [
       { name: 'Imported One', firm: 'Alpha LP', segment: 'Endowment / Foundation', aum_mm: 5000 },
       { name: 'Imported Two', firm: 'Beta Trust', segment: 'Family Office', uhnw: 'Yes' },
     ] });
@@ -352,8 +357,12 @@ describe('CSV / bulk import', () => {
     const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${editorToken}`).send({ contacts: [{ name: 'x' }] });
     expect(res.status).toBe(403);
   });
+  it('blocks a regular admin who is not the super admin (403)', async () => {
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ contacts: [{ name: 'x' }] });
+    expect(res.status).toBe(403);
+  });
   it('rejects a non-array body', async () => {
-    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ contacts: 'nope' });
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${superAdminToken}`).send({ contacts: 'nope' });
     expect(res.status).toBe(400);
   });
 });
@@ -471,7 +480,7 @@ describe('CSV import', () => {
   it('imports from raw CSV text with header aliasing', async () => {
     const before = (await request(app).get('/api/health')).body.contacts;
     const csv = 'Name,Firm,Segment,Role / Title,AUM ($mm)\nCsv Allocator,CSV Capital,Family Office,Chief Investment Officer,3200\nSecond Csv,Beta Family Office,Family Office,Principal,800';
-    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ csv });
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${superAdminToken}`).send({ csv });
     expect(res.status).toBe(200);
     expect(res.body.imported).toBe(2);
     expect(res.body.total).toBe(before + 2);
@@ -1003,7 +1012,7 @@ describe('import must not destroy the book', () => {
 
     // exactly what a refreshed advisor list looks like: no id column at all
     const csv = 'name,firm,email\nKnown Advisor,Renamed Firm,known.advisor@imp.test\nBrand New One,NewCo,brand.new1@imp.test\nBrand New Two,NewCo,brand.new2@imp.test\n';
-    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ csv });
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${superAdminToken}`).send({ csv });
     expect(res.status).toBe(200);
     expect(res.body.created).toBe(2);     // the two we are actually missing
     expect(res.body.updated).toBe(1);     // matched by email, not duplicated
@@ -1024,7 +1033,7 @@ describe('import must not destroy the book', () => {
     const id = c.body.contact.id;
 
     const csv = 'name,email,firm\nPartial Target,partial@imp.test,Renamed Firm\n';
-    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ csv });
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${superAdminToken}`).send({ csv });
     expect(res.body.updated).toBe(1);
     expect(res.body.created).toBe(0);
 
@@ -1040,7 +1049,7 @@ describe('import must not destroy the book', () => {
   it('exporting the book and re-importing it leaves the book the same size', async () => {
     const before = (await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${viewerToken}`)).body.total;
     const csv = (await request(app).get('/api/contacts/export.csv?priority=A').set('Authorization', `Bearer ${viewerToken}`)).text;
-    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${adminToken}`).send({ csv });
+    const res = await request(app).post('/api/contacts/import').set('Authorization', `Bearer ${superAdminToken}`).send({ csv });
     expect(res.body.created).toBe(0);
     const after = (await request(app).get('/api/contacts?pageSize=1').set('Authorization', `Bearer ${viewerToken}`)).body.total;
     expect(after).toBe(before);
@@ -1051,7 +1060,7 @@ describe('the role model holds', () => {
   // Deliberate, per the Users panel: admins manage users and the book itself,
   // editors work the pipeline on top of it. Documented here so it is a decision
   // rather than an accident.
-  it('editors can create a contact; viewers cannot; import stays admin-only', async () => {
+  it('editors can create a contact; viewers cannot; import stays super-admin-only', async () => {
     const ed = await request(app).post('/api/contacts').set('Authorization', `Bearer ${editorToken}`)
       .send({ name: 'Met At Conference', firm: 'ConfCo', email: 'met@conf.test' });
     expect(ed.status).toBe(201);

@@ -58,11 +58,11 @@ templatesRouter.patch('/:id', requireAuth, requireRole('editor'), async (req, re
 
 templatesRouter.delete('/:id', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
-  const row = await one<{ created_by: number }>('SELECT created_by FROM templates WHERE id = ?', [id]);
+  const row = await one<{ created_by: number; name: string }>('SELECT created_by, name FROM templates WHERE id = ?', [id]);
   if (!row) return res.status(404).json({ error: 'Template not found' });
   if (row.created_by !== req.user!.uid && req.user!.role !== 'admin') return res.status(403).json({ error: 'Only the author or an admin can delete this' });
   await run('DELETE FROM templates WHERE id = ?', [id]);
-  await writeAudit(req.user, 'template_delete', 'template', id);
+  await writeAudit(req.user, 'template_delete', 'template', id, { name: row.name });
   return res.json({ ok: true });
 });
 

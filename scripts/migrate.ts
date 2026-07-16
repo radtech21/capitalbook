@@ -15,6 +15,18 @@ const DB = {
   database: process.env.DB_NAME || 'capitalbook',
 };
 
+// Optional `--until <prefix>` caps this run to migration files whose
+// filename sorts at or before the given prefix (e.g. `--until 004` applies
+// 001-004 and stops). Used by `npm run setup` to apply schema-only
+// migrations before contacts are seeded, since 005 onward are UPDATE/INSERT
+// statements that assume contacts already exist (see `npm run migrate:schema`
+// in package.json) — without this, those files would silently match zero
+// rows against an empty `contacts` table on a fresh database, yet still get
+// marked "applied" and never run again. A plain `npm run migrate` (no flag)
+// is unaffected and keeps applying whatever's left, in order, as before.
+const untilArgIndex = process.argv.indexOf('--until');
+const until = untilArgIndex !== -1 ? process.argv[untilArgIndex + 1] : null;
+
 async function main() {
   // Connect without selecting a database first, so we can create it if needed.
   const root = await mysql.createConnection({
@@ -38,7 +50,10 @@ async function main() {
   const [appliedRows] = (await root.query('SELECT filename FROM schema_migrations')) as any;
   const applied = new Set((appliedRows as any[]).map((r) => r.filename));
 
-  const files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+  let files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+  if (until) {
+    files = files.filter((f) => f.slice(0, until.length) <= until);
+  }
   let ran = 0;
   for (const file of files) {
     if (applied.has(file)) { console.log(`= skip ${file} (already applied)`); continue; }

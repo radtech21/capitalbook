@@ -6,8 +6,9 @@
   "description": "Capital Book CRM API (Express + MySQL)",
   "scripts": {
     "migrate": "tsx scripts/migrate.ts",
+    "migrate:schema": "tsx scripts/migrate.ts --until 004",
     "seed": "tsx seeds/seed.ts",
-    "setup": "npm run migrate && npm run seed",
+    "setup": "npm run migrate:schema && npm run seed && npm run migrate",
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "test": "vitest run",

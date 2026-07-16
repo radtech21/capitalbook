@@ -32,9 +32,10 @@ tagsRouter.post('/tags', requireAuth, requireRole('editor'), async (req, res) =>
 // DELETE /api/tags/:id -> remove a tag everywhere (admin)
 tagsRouter.delete('/tags/:id', requireAuth, requireRole('admin'), async (req, res) => {
   const id = Number(req.params.id);
-  if (!(await one('SELECT id FROM tags WHERE id = ?', [id]))) return res.status(404).json({ error: 'Tag not found' });
+  const existing = await one<{ name: string }>('SELECT name FROM tags WHERE id = ?', [id]);
+  if (!existing) return res.status(404).json({ error: 'Tag not found' });
   await run('DELETE FROM tags WHERE id = ?', [id]);
-  await writeAudit(req.user, 'tag_delete', 'tag', id);
+  await writeAudit(req.user, 'tag_delete', 'tag', id, { name: existing.name });
   return res.json({ ok: true });
 });
 
