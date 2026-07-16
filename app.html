@@ -132,6 +132,7 @@
       <select id="ncSeg"><option value="">Segment...</option></select>
       <input id="ncEmail" placeholder="Email">
       <input id="ncPhone" placeholder="Phone">
+      <input id="ncAddress" placeholder="Address">
       <input id="ncCity" placeholder="City">
       <input id="ncState" placeholder="Province / State">
       <input id="ncCountry" placeholder="Country">
@@ -141,9 +142,6 @@
     <div class="nc-foot"><button id="ncCancel" class="sf-btn">Cancel</button><button id="ncCreate" class="sf-btn primary">Create contact</button></div>
   </div>
 </div>
-
-<!-- PRINT BRIEF (only rendered by the print stylesheet) -->
-<div id="printBrief"></div>
 
 <!-- COMMAND PALETTE -->
 <div id="palette" class="palette hidden">
@@ -165,7 +163,7 @@
       <h3>Segment</h3><select id="fSeg"><option value="">All segments</option></select>
       <h3>Firm type</h3><select id="fFirmType"><option value="">All firm types</option></select>
       <h3>Priority</h3><select id="fPri"><option value="">All priorities</option></select>
-      <h3>Country</h3><select id="fCountry"><option value="">All countries</option></select>
+      <h3>Country</h3><select id="fCountry"><option value="Canada">Canada</option><option value="USA">USA</option><option value="Other">Other</option></select>
       <h3>Province / State</h3><select id="fState" disabled><option value="">Select a country first</option></select>
       <h3>City</h3><select id="fCity" disabled><option value="">Select a country first</option></select>
       <h3>AUM tier</h3><select id="fTier"><option value="">All tiers</option></select>
@@ -223,6 +221,9 @@
     </main>
   </div>
 </div>
+
+<!-- PRINT BRIEF (only rendered by the print stylesheet; must be a sibling of #app, not nested inside it, so the print stylesheet's body > *:not(#printBrief) rule doesn't hide it along with #app -->
+<div id="printBrief"></div>
 
 <!-- DETAIL DRAWER -->
 <div id="overlay" class="overlay"></div>
@@ -367,7 +368,7 @@
   <div class="modal-card">
     <button class="modal-close" id="tplClose">&times;</button>
     <h2>Email templates</h2>
-    <div class="modal-sub">Use <span class="mono">{{first_name}}</span>, <span class="mono">{{name}}</span>, <span class="mono">{{firm}}</span>, <span class="mono">{{segment}}</span>, <span class="mono">{{city}}</span>, <span class="mono">{{title}}</span> as merge fields.</div>
+    <div class="modal-sub">Drop any of these into the subject or body — each one is swapped for that contact's own data when you send: <span class="mono">{{name}}</span>, <span class="mono">{{first_name}}</span>, <span class="mono">{{title}}</span>, <span class="mono">{{firm}}</span>, <span class="mono">{{segment}}</span>, <span class="mono">{{city}}</span>, <span class="mono">{{state}}</span>, <span class="mono">{{country}}</span>, <span class="mono">{{email}}</span>, <span class="mono">{{aum_tier}}</span>. Anything else in double curly braces (misspelled or unsupported, e.g. <span class="mono">{{company}}</span>) is left exactly as typed instead of being blanked out — check the preview before sending.</div>
     <div class="tpl-wrap">
       <div class="tpl-list" id="tplList"></div>
       <div class="tpl-edit">

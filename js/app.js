@@ -7,8 +7,13 @@ let token = localStorage.getItem(TOKEN_KEY) || '';
 const API_BASE = (window.CB_API || '').replace(/\/$/, ''); // base URL of the Capital Book API
 let me = null;
 
+// Contacts CSV import is restricted server-side (POST /contacts/import) to this
+// one account, not just any admin. Mirrored here so the Import button doesn't
+// invite a 403 for every other admin.
+const SUPER_ADMIN_EMAIL = 'admin@capitalbook.local';
+
 const SEG_COLORS = {
-  'Financial Advisor':'#3E6FA8','Advisor Team':'#6B8BB5','Pension Fund':'#B08D2E','Sovereign Wealth Fund':'#8A6B1F',
+  'Financial Advisor':'#3E6FA8','Pension Fund':'#B08D2E','Sovereign Wealth Fund':'#8A6B1F',
   'Family Office':'#1C7A57','Consultant / OCIO':'#7A4FA0','Endowment / Foundation':'#2C6EA8','Platform / FoF / Seeder':'#0E7C86',
   'Insurance General Account':'#5E548E','Healthcare / Nonprofit':'#2A8C7A','Placement Agent / Cap Intro':'#C0632E',
   'RIA / Private Bank / MFO':'#9A6A4F','Venture Capital / Growth':'#B0436E','Private Equity / Buyout':'#6E7B3D',
@@ -67,7 +72,7 @@ async function enterApp(){
   $('userEmail').textContent = me.email; $('userRole').textContent = me.role;
   const canEdit = me.role==='admin'||me.role==='editor';
   CAN_EDIT = canEdit;
-  $('importBtn').classList.toggle('hidden', me.role!=='admin');
+  $('importBtn').classList.toggle('hidden', (me.email||'').toLowerCase()!==SUPER_ADMIN_EMAIL);
   $('newBtn').classList.toggle('hidden', !canEdit);
   if(me.mustChange){
     FORCE_PW = true;
@@ -81,6 +86,8 @@ async function enterApp(){
   $('selAll').style.visibility = canEdit ? 'visible' : 'hidden';
   if(canEdit && $('bulkStatus').options.length<=1){ STATUS_OPTS.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; $('bulkStatus').appendChild(o); }); }
   await loadMeta();
+  $('fCountry').value = state.country; $('fSeg').value = state.segment;
+  await loadGeo();
   loadTagFilter(); loadViews(); loadMembers();
   resetAndLoad();
   refreshTaskBadge();
@@ -89,7 +96,7 @@ async function enterApp(){
 async function loadMeta(){
   const m = await api('/contacts/meta');
   const fill=(sel,arr)=>{ arr.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); }); };
-  fill($('fSeg'), m.segments); fill($('fCountry'), m.countries); fill($('fPri'), m.priorities); fill($('fTier'), m.tiers);
+  fill($('fSeg'), m.segments); fill($('fPri'), m.priorities); fill($('fTier'), m.tiers);
   fill($('fSource'), m.sources || []);
   fill($('ncSeg'), m.segments || []);
   fill($('fFirmType'), m.firmTypes || []);
@@ -98,7 +105,9 @@ async function loadMeta(){
 }
 
 // ---------- list ----------
-const state = { q:'', segment:'', priority:'', country:'', state:'', city:'', tier:'', status:'', tag:'', owner:'', source:'', firmtype:'', emailstatus:'', reachable:false, foundation:false, uhnw:false, institutional:false, flag:false, due:false, noemail:false, nopipeline:false, sort:'a', dir:'desc', page:1 };
+// Country and segment default to Canada / Financial Advisor on every fresh load —
+// the desk's most common working view — rather than starting unfiltered.
+const state = { q:'', segment:'Financial Advisor', priority:'', country:'Canada', state:'', city:'', tier:'', status:'', tag:'', owner:'', source:'', firmtype:'', emailstatus:'', reachable:false, foundation:false, uhnw:false, institutional:false, flag:false, due:false, noemail:false, nopipeline:false, sort:'a', dir:'desc', page:1 };
 const selected = new Set();
 let CAN_EDIT = false;
 let FORCE_PW = false;   // true while a temporary password must be replaced
@@ -186,8 +195,11 @@ $('fDue').onchange=e=>{ state.due=e.target.checked; resetAndLoad(); };
 $('sortSel').onchange=e=>{ state.sort=e.target.value; resetAndLoad(); };
 $('dirBtn').onclick=()=>{ state.dir = state.dir==='desc'?'asc':'desc'; $('dirBtn').textContent=state.dir; resetAndLoad(); };
 $('resetBtn').onclick=()=>{
-  Object.assign(state,{q:'',segment:'',priority:'',country:'',state:'',city:'',tier:'',status:'',tag:'',owner:'',source:'',firmtype:'',emailstatus:'',reachable:false,uhnw:false,institutional:false,foundation:false,flag:false,due:false,noemail:false,nopipeline:false,page:1});
-  $('q').value=''; ['fSeg','fPri','fCountry','fTier','fStatus','fTag','fOwner','fSource','fFirmType','fEmailStatus'].forEach(id=>$(id).value='');
+  // Country has no "all countries" option any more (Canada/USA/Other always cover
+  // everything), so a reset returns it to the default bucket instead of blanking it.
+  Object.assign(state,{q:'',segment:'',priority:'',country:'Canada',state:'',city:'',tier:'',status:'',tag:'',owner:'',source:'',firmtype:'',emailstatus:'',reachable:false,uhnw:false,institutional:false,foundation:false,flag:false,due:false,noemail:false,nopipeline:false,page:1});
+  $('q').value=''; ['fSeg','fPri','fTier','fStatus','fTag','fOwner','fSource','fFirmType','fEmailStatus'].forEach(id=>$(id).value='');
+  $('fCountry').value='Canada';
   loadGeo();
   ['fReach','fUhnw','fInst','fFound','fFlag','fDue','fNoEmail','fNoPipe'].forEach(id=>$(id).checked=false);
   loadPage(false);
@@ -222,7 +234,7 @@ async function openDetail(id){
   }
   $('drawer').innerHTML =
     `<div class="dr-head"><button class="dr-close" id="drClose">&times;</button>
-       <div class="dr-name">${esc(c.name)}</div><div class="dr-firm">${esc(c.title)}${c.title&&c.firm?' · ':''}${esc(c.firm)}</div>
+       <div class="dr-name">${esc(c.name)}${canEdit?'<button class=\"dr-name-edit\" id=\"drNameEdit\" title=\"Edit name\" aria-label=\"Edit name\">&#9998;</button>':''}</div><div class="dr-firm">${esc(c.title)}${c.title&&c.firm?' · ':''}${esc(c.firm)}</div>
        <div class="dr-seg"><span class="seg" style="background:${col}">${esc(c.segment)}</span></div>
        <div id="drTags" class="dr-tags"></div>
        <div class="dr-actions"><button class="dr-act" id="drVcf">Save .vcf</button><button class="dr-act" id="drBrief">Print brief</button><button class="dr-act" id="drCompose">Compose email</button>${canEdit?'<button class="dr-act" id="drTag">+ Tag</button>':''}${canEdit?'<button class="dr-act" id="drEdit">Edit</button>':''}</div>
@@ -230,7 +242,7 @@ async function openDetail(id){
      <div class="dr-body">
        <div class="dr-grid">
          ${field('Email', c.email)} ${field('Email status', c.email_status)}
-         ${field('Phone', c.phone)} ${field('Location', [c.city,c.state,c.country].filter(Boolean).join(', '))}
+         ${field('Phone', c.phone)} ${field('Location', [c.address,c.city,c.state,c.country].filter(Boolean).join(', '))}
          ${field('AUM', fmtAum(c.aum_mm))} ${field('Tier', c.aum_tier)}
          ${field('Firm type', c.firm_type)} ${field('Priority', c.priority)}
          ${field('Source', c.source_list)} ${field('Client types', c.client_types)}
@@ -270,6 +282,7 @@ async function openDetail(id){
       }catch(e){ $('pMsg').style.color='#B0442E'; $('pMsg').textContent=e.message||'Save failed'; }
     };
     if($('drEdit')) $('drEdit').onclick=()=>enterEditMode(c);
+    if($('drNameEdit')) $('drNameEdit').onclick=()=>enterEditMode(c);
   }
   loadActivities(id);
   renderDrawerTags(id, tags, canEdit);
@@ -418,10 +431,11 @@ $('importRun').onclick=async()=>{
   }catch(e){ $('importMsg').style.color='#B0442E'; $('importMsg').textContent=e.message||'Import failed'; }
 };
 async function loadMetaRefresh(){
-  ['fSeg','fCountry','fTier'].forEach(id=>{ const s=$(id); const keep=s.options[0]; s.innerHTML=''; s.appendChild(keep); });
+  // fCountry is a fixed Canada/USA/Other list, not populated from meta — leave it alone here.
+  ['fSeg','fTier'].forEach(id=>{ const s=$(id); const keep=s.options[0]; s.innerHTML=''; s.appendChild(keep); });
   try{ const m=await api('/contacts/meta');
     const fill=(sel,arr)=>arr.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;$(sel).appendChild(o);});
-    fill('fSeg',m.segments); fill('fCountry',m.countries); fill('fTier',m.tiers);
+    fill('fSeg',m.segments); fill('fTier',m.tiers);
   }catch{}
 }
 
@@ -451,7 +465,7 @@ async function loadActivities(contactId){
 }
 
 // ---- contact edit mode (editors) ----
-const EDIT_FIELDS=[['name','Name'],['title','Title'],['firm','Firm'],['segment','Segment'],['priority','Priority'],['email','Email'],['email_status','Email status'],['phone','Phone'],['city','City'],['state','State / Province'],['country','Country'],['aum_mm','AUM ($mm)'],['aum_tier','AUM tier'],['firm_type','Firm type'],['source_list','Source']];
+const EDIT_FIELDS=[['name','Name'],['title','Title'],['firm','Firm'],['segment','Segment'],['priority','Priority'],['email','Email'],['email_status','Email status'],['phone','Phone'],['address','Address'],['city','City'],['state','State / Province'],['country','Country'],['aum_mm','AUM ($mm)'],['aum_tier','AUM tier'],['firm_type','Firm type'],['source_list','Source']];
 function enterEditMode(c){
   const grid=$('drawer').querySelector('.dr-grid'); if(!grid) return;
   const segOpts=['',...Object.keys(SEG_COLORS)];
@@ -464,6 +478,7 @@ function enterEditMode(c){
   form.innerHTML=`<div class="edit-grid">${EDIT_FIELDS.map(([k,l])=>`<div class="ef"><label>${l}</label>${inputFor(k)}</div>`).join('')}</div><button class="save" id="cSave">Save contact</button><div class="savemsg" id="cMsg"></div>`;
   grid.replaceWith(form);
   const eb=$('drEdit'); if(eb) eb.style.display='none';
+  const nb=$('drNameEdit'); if(nb) nb.style.display='none';
   $('cSave').onclick=async()=>{
     const payload={};
     form.querySelectorAll('[data-k]').forEach(el=>{ payload[el.dataset.k]= el.type==='number' ? (el.value!==''?Number(el.value):null) : el.value; });
@@ -1017,13 +1032,26 @@ function audDetail(r){
     return Object.entries(o).map(([k,v]) => `${k}: ${v}`).join(', ');
   }catch(e){ return String(r.detail); }
 }
+// Resolve a human-readable label for the "On" column instead of raw "entity entity_id".
+// Prefer the name the backend joined live from the entity's own table; if the row was
+// since deleted, fall back to whatever name was captured in `detail` at write time.
+function audOn(r){
+  const resolved = r.contact_name || r.target_user_name || r.task_title || r.tag_name || r.template_name || r.view_name;
+  if(resolved) return resolved;
+  let detail = {};
+  try{ detail = typeof r.detail === 'string' ? JSON.parse(r.detail) : (r.detail || {}); }catch(e){}
+  const fallback = detail.name || detail.person || detail.title || detail.contact || detail.email || r.target_user_email;
+  if(fallback) return fallback;
+  if(r.entity === 'contacts' && r.entity_id) return `${r.entity_id} contacts`; // bulk actions: entity_id is a count, not an id
+  return [r.entity, r.entity_id].filter(Boolean).join(' ');
+}
 function renderAudit(){
   const term = $('audSearch').value.trim().toLowerCase();
   const rows = AUDIT.filter(r => !term ||
-    [r.user_email, r.action, r.entity, r.entity_id, audDetail(r)].join(' ').toLowerCase().includes(term));
+    [r.user_email, r.action, r.entity, r.entity_id, audOn(r), audDetail(r)].join(' ').toLowerCase().includes(term));
   $('audRows').innerHTML = rows.length ? rows.map(r => {
     const hot = AUD_SENSITIVE.has(r.action) ? ' aud-hot' : '';
-    const on = [r.entity, r.entity_id].filter(Boolean).join(' ');
+    const on = audOn(r);
     return `<tr class="${hot.trim()}">`+
       `<td class="aud-when">${audWhen(r.created_at)}</td>`+
       `<td>${esc(r.user_email || 'system')}</td>`+
@@ -1126,7 +1154,7 @@ function buildVcf(c){
   if(c.title) lines.push('TITLE:'+vcfEscape(c.title));
   if(c.email) lines.push('EMAIL;TYPE=WORK:'+vcfEscape(c.email));
   if(c.phone) lines.push('TEL;TYPE=WORK,VOICE:'+vcfEscape(c.phone));
-  if(c.city||c.state||c.country) lines.push('ADR;TYPE=WORK:;;;'+vcfEscape(c.city||'')+';'+vcfEscape(c.state||'')+';;'+vcfEscape(c.country||''));
+  if(c.address||c.city||c.state||c.country) lines.push('ADR;TYPE=WORK:;;'+vcfEscape(c.address||'')+';'+vcfEscape(c.city||'')+';'+vcfEscape(c.state||'')+';;'+vcfEscape(c.country||''));
   lines.push('NOTE:'+vcfEscape('Capital Book'+(c.segment?' · '+c.segment:'')));
   lines.push('END:VCARD');
   return lines.join('\r\n')+'\r\n';
@@ -1251,7 +1279,7 @@ function downloadVcf(c){
 // ---------- new contact (editor and above) ----------
 (function newContact(){
   const modal=$('ncModal'); if(!modal) return;
-  const F=['ncName','ncTitle','ncFirm','ncEmail','ncPhone','ncCity','ncState','ncCountry'];
+  const F=['ncName','ncTitle','ncFirm','ncEmail','ncPhone','ncAddress','ncCity','ncState','ncCountry'];
   const open=()=>{ F.forEach(id=>$(id).value=''); $('ncSeg').value=''; $('ncPri').value=''; $('ncMsg').textContent=''; $('ncMsg').className='sf-msg';
     modal.classList.remove('hidden'); setTimeout(()=>$('ncName').focus(),30); };
   $('newBtn').onclick=open;
@@ -1261,7 +1289,7 @@ function downloadVcf(c){
     const name=$('ncName').value.trim();
     if(!name){ $('ncMsg').textContent='A name is required.'; $('ncMsg').className='sf-msg err'; $('ncName').focus(); return; }
     const body={ name, title:$('ncTitle').value.trim(), firm:$('ncFirm').value.trim(), email:$('ncEmail').value.trim(),
-      phone:$('ncPhone').value.trim(), city:$('ncCity').value.trim(), state:$('ncState').value.trim(),
+      phone:$('ncPhone').value.trim(), address:$('ncAddress').value.trim(), city:$('ncCity').value.trim(), state:$('ncState').value.trim(),
       country:$('ncCountry').value.trim(), segment:$('ncSeg').value, priority:$('ncPri').value };
     try{
       const d=await api('/contacts',{method:'POST',body:JSON.stringify(body)});
@@ -1291,7 +1319,7 @@ async function printBrief(id){
     `<div class="pb-grid">`+
       row('Segment', c.segment)+row('Priority', c.priority)+
       row('AUM', c.aum_mm?fmtAum(c.aum_mm):'')+row('Tier', c.aum_tier)+
-      row('Location', [c.city,c.state,c.country].filter(Boolean).join(', '))+row('Firm type', c.firm_type)+
+      row('Location', [c.address,c.city,c.state,c.country].filter(Boolean).join(', '))+row('Firm type', c.firm_type)+
       row('Email', c.email?`${c.email}${c.email_status?' ('+c.email_status+')':''}`:'')+row('Phone', c.phone)+
       row('Owner', owner?(owner.name||owner.email):'')+row('Source', c.source_list)+
       row('Tags', tags.map(t=>t.name).join(', '))+
@@ -1321,7 +1349,6 @@ async function loadReport(){
   REP=d.rows||[];
   const totalC=REP.reduce((a,r)=>a+Number(r.contacts),0);
   const max=Math.max(1,...REP.map(r=>Number(r.contacts)));
-  const active=(typeof updateFilterBadge==='function'? null : null);
   $('repScope').textContent = totalC.toLocaleString()+' contacts in the current view';
   $('repRows').innerHTML = REP.length? REP.map(r=>{
     const c=Number(r.contacts), pct=totalC? Math.round(100*c/totalC) : 0;

@@ -83,13 +83,15 @@ button{font-family:inherit;cursor:pointer}
 .dr-head{padding:20px 22px;border-bottom:1px solid var(--line);position:relative}
 .dr-close{position:absolute;top:16px;right:16px;border:none;background:#f0ede5;width:30px;height:30px;border-radius:8px;font-size:16px;line-height:1}
 .dr-name{font-size:18px;font-weight:600;color:var(--ink);padding-right:32px}
+.dr-name-edit{border:none;background:none;color:var(--muted);font-size:13px;cursor:pointer;margin-left:6px;vertical-align:middle;padding:2px 4px;border-radius:5px}
+.dr-name-edit:hover{color:var(--ink);background:#f0ede5}
 .dr-firm{color:var(--muted);font-size:13px;margin-top:2px}
 .dr-seg{margin-top:10px}
 .dr-body{padding:18px 22px}
 .dr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:16px}
 .dr-field label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px}
 .dr-field div{font-size:13px;color:var(--text)}
-.dr-flag{background:#fff7 e6;background:#fdf6e3;border:1px solid #ecdca8;border-radius:9px;padding:10px 12px;font-size:12px;color:#6a5b1f;margin-bottom:16px;line-height:1.5}
+.dr-flag{background:#fdf6e3;border:1px solid #ecdca8;border-radius:9px;padding:10px 12px;font-size:12px;color:#6a5b1f;margin-bottom:16px;line-height:1.5}
 .pipe{border-top:1px solid var(--line);padding-top:16px}
 .pipe h4{margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--brass)}
 .pipe .statuses{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
@@ -166,8 +168,6 @@ button{font-family:inherit;cursor:pointer}
 .ef label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px}
 .ef input,.ef select{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:inherit;outline:none}
 .ef input:focus,.ef select:focus{border-color:var(--brass)}
-.dr-edit-btn{position:absolute;top:16px;right:54px;border:none;background:#f0ede5;height:30px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--ink2)}
-.dr-edit-btn:hover{background:#e7e3d8}
 #importText{width:100%;min-height:160px;padding:12px;border:1px solid var(--line);border-radius:10px;font-family:"IBM Plex Mono",monospace;font-size:12px;outline:none;margin-bottom:12px}
 #importText:focus{border-color:var(--brass)}
 
@@ -466,7 +466,6 @@ table.aud tr:last-child td{border-bottom:none}
 .nc-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0 4px}
 .nc-grid input,.nc-grid select{padding:10px 11px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;min-width:0}
 .nc-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-.sf-btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
 @media(max-width:560px){ .nc-grid{grid-template-columns:1fr} }
 
 /* ---- meeting brief: exists only on paper ---- */
