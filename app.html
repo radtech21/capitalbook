@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capital Book - App</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="login">
+  <div class="login-card">
+    <div class="brand"><span class="spine"></span><div><h1>Capital Book</h1><p>Wealth &amp; Institutional CRM</p></div></div>
+    <div id="liMain">
+      <label>Email</label>
+      <input id="liEmail" type="email" autocomplete="username" placeholder="you@ninepoint.com">
+      <label>Password</label>
+      <input id="liPass" type="password" autocomplete="current-password" placeholder="Password">
+      <button id="liBtn">Sign in</button>
+      <div class="login-foot">
+        <a id="liForgotLink">Forgot password?</a>
+        <span id="liRegWrap" class="hidden"> &middot; <span id="liToggleText">No account?</span> <a id="liToggle">Create one</a></span>
+      </div>
+    </div>
+
+    <div id="liForgot" class="hidden">
+      <label>Email</label>
+      <input id="fpEmail" type="email" autocomplete="username" placeholder="you@ninepoint.com">
+      <button id="fpBtn">Send reset link</button>
+      <div class="login-foot"><a id="fpBack">Back to sign in</a></div>
+    </div>
+
+    <div id="liReset" class="hidden">
+      <div class="modal-sub" style="margin-bottom:10px">Choose a new password for your account.</div>
+      <label>New password</label>
+      <input id="rsPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+      <label>Confirm new password</label>
+      <input id="rsPass2" type="password" autocomplete="new-password" placeholder="Repeat it">
+      <button id="rsBtn">Set new password</button>
+      <div class="login-foot"><a id="rsBack">Back to sign in</a></div>
+    </div>
+
+    <div id="liErr" class="login-err"></div>
+    <div id="liOk" class="login-ok"></div>
+    <div class="login-foot"><a href="index.html" style="color:var(--brass)">Back to overview</a></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app">
+  <div class="topbar">
+    <button id="navBtn" class="icon-btn" aria-label="Menu" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+    </button>
+    <span class="spine"></span><span class="ttl">Capital Book</span>
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M14 14l4 4"/></svg>
+      <button id="palHint" class="kbd-hint" title="Command palette" type="button">Ctrl K</button>
+      <input id="q" type="text" placeholder="Search name, firm, email, city">
+    </div>
+    <div class="sp"></div>
+    <div class="tb-actions" id="tbActions">
+    <button id="feedBtn" class="tb-btn">Feed</button>
+    <button id="boardBtn" class="tb-btn">Board</button>
+    <button id="tasksBtn" class="tb-btn">Tasks <span id="taskBadge" class="badge hidden">0</span></button>
+    <button id="importBtn" class="tb-btn hidden">Import</button>
+    <button id="tplBtn" class="tb-btn hidden">Templates</button>
+    <button id="usersBtn" class="tb-btn hidden">Users</button>
+    <button id="auditBtn" class="tb-btn hidden">Audit</button>
+    <button id="acctBtn" class="tb-btn">Account</button>
+    <button id="dashBtn" class="tb-btn">Dashboard</button>
+    <div class="tb-user"><span id="userEmail"></span><span id="userRole" class="tb-role"></span></div>
+    <button id="logoutBtn" class="tb-btn">Sign out</button>
+    </div>
+  </div>
+  <div id="scrim" class="scrim"></div>
+
+<!-- REPORT MODAL -->
+<div id="repModal" class="modal hidden">
+  <div class="modal-card wide">
+    <button class="modal-close" id="repClose">&times;</button>
+    <h2>Report</h2>
+    <div class="modal-sub">The view you have filtered right now, grouped and rolled up. Change the sidebar filters and reopen to slice differently.</div>
+    <div class="aud-bar">
+      <select id="repBy">
+        <option value="firmtype">By firm type</option>
+        <option value="segment">By segment</option>
+        <option value="country">By country</option>
+        <option value="state">By province / state</option>
+        <option value="tier">By AUM tier</option>
+        <option value="priority">By priority</option>
+        <option value="emailstatus">By email status</option>
+        <option value="source">By list</option>
+        <option value="status">By my pipeline status</option>
+        <option value="owner">By owner</option>
+      </select>
+      <span id="repScope" class="rep-scope"></span>
+      <button id="repCsv" class="sf-btn">Export CSV</button>
+    </div>
+    <div class="aud-wrap"><table class="aud"><thead><tr>
+      <th style="width:34%">Group</th><th>Contacts</th><th style="width:22%"></th><th>AUM</th><th>In my pipeline</th><th>Open opp</th>
+    </tr></thead><tbody id="repRows"></tbody></table></div>
+  </div>
+</div>
+
+<!-- PIPELINE BOARD -->
+<div id="boardModal" class="modal hidden">
+  <div class="modal-card board-card">
+    <button class="modal-close" id="boardClose">&times;</button>
+    <h2>Pipeline board</h2>
+    <div class="modal-sub" id="boardSub">Your pipeline, one column per stage. Drag a card to move it.</div>
+    <div id="boardCols" class="board-cols"></div>
+  </div>
+</div>
+
+<!-- NEW CONTACT MODAL -->
+<div id="ncModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="ncClose">&times;</button>
+    <h2>New contact</h2>
+    <div class="modal-sub">Only a name is required. Everything else can be filled in later from the drawer.</div>
+    <div class="nc-grid">
+      <input id="ncName" placeholder="Full name *">
+      <input id="ncTitle" placeholder="Title">
+      <input id="ncFirm" placeholder="Firm">
+      <select id="ncSeg"><option value="">Segment...</option></select>
+      <input id="ncEmail" placeholder="Email">
+      <input id="ncPhone" placeholder="Phone">
+      <input id="ncCity" placeholder="City">
+      <input id="ncState" placeholder="Province / State">
+      <input id="ncCountry" placeholder="Country">
+      <select id="ncPri"><option value="">Priority...</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
+    </div>
+    <div id="ncMsg" class="sf-msg"></div>
+    <div class="nc-foot"><button id="ncCancel" class="sf-btn">Cancel</button><button id="ncCreate" class="sf-btn primary">Create contact</button></div>
+  </div>
+</div>
+
+<!-- PRINT BRIEF (only rendered by the print stylesheet) -->
+<div id="printBrief"></div>
+
+<!-- COMMAND PALETTE -->
+<div id="palette" class="palette hidden">
+  <div class="pal-card">
+    <input id="palInput" placeholder="Jump to a contact, or type an action..." autocomplete="off" spellcheck="false">
+    <div id="palList" class="pal-list"></div>
+    <div class="pal-foot"><span><b>&uarr;&darr;</b> navigate</span><span><b>Enter</b> open</span><span><b>Esc</b> close</span></div>
+  </div>
+</div>
+
+  <div class="body">
+    <aside class="filters" id="filters">
+      <button id="filtClose" class="filt-close" aria-label="Close filters">&times;</button>
+      <h3>Saved views</h3>
+      <select id="viewSel"><option value="">Apply a saved view…</option></select>
+      <button class="reset" id="saveViewBtn" style="margin-top:6px">Save current view</button>
+      <h3>List</h3><select id="fSource"><option value="">All lists</option></select>
+      <h3>Email status</h3><select id="fEmailStatus"><option value="">Any email status</option></select>
+      <h3>Segment</h3><select id="fSeg"><option value="">All segments</option></select>
+      <h3>Firm type</h3><select id="fFirmType"><option value="">All firm types</option></select>
+      <h3>Priority</h3><select id="fPri"><option value="">All priorities</option></select>
+      <h3>Country</h3><select id="fCountry"><option value="">All countries</option></select>
+      <h3>Province / State</h3><select id="fState" disabled><option value="">Select a country first</option></select>
+      <h3>City</h3><select id="fCity" disabled><option value="">Select a country first</option></select>
+      <h3>AUM tier</h3><select id="fTier"><option value="">All tiers</option></select>
+      <h3>Pipeline status</h3><select id="fStatus"><option value="">Any status</option></select>
+      <h3>Tag</h3><select id="fTag"><option value="">All tags</option></select>
+      <h3>Owner</h3><select id="fOwner"><option value="">All owners</option><option value="me">Assigned to me</option><option value="none">Unassigned</option></select>
+      <h3>Refine</h3>
+      <label class="chk"><input type="checkbox" id="fReach"> Reachable only</label>
+      <label class="chk"><input type="checkbox" id="fUhnw"> UHNW</label>
+      <label class="chk"><input type="checkbox" id="fInst"> Institutional</label>
+      <label class="chk"><input type="checkbox" id="fFound"> Foundation</label>
+      <label class="chk"><input type="checkbox" id="fFlag"> Has data flag</label>
+      <label class="chk"><input type="checkbox" id="fDue"> Follow-ups due</label>
+      <label class="chk"><input type="checkbox" id="fNoEmail"> No email on file</label>
+      <label class="chk"><input type="checkbox" id="fNoPipe"> Not in my pipeline</label>
+      <button class="reset" id="resetBtn">Reset filters</button>
+    </aside>
+
+    <main class="main">
+      <div class="toolbar">
+        <button id="filtBtn" class="filt-btn" aria-label="Filters">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h14M6 10h8M9 15h2"/></svg>
+          Filters <span id="filtCount" class="filt-count hidden">0</span>
+        </button>
+        <span class="count"><b id="resCount">0</b> results</span>
+        <div class="sp"></div>
+        <span class="lbl">Sort</span>
+        <select id="sortSel">
+          <option value="a">AUM</option>
+          <option value="ls">Lead score</option>
+          <option value="pr">Priority</option>
+          <option value="r25">State rank (US)</option>
+          <option value="n">Name</option>
+        </select>
+        <button class="dir" id="dirBtn" title="Toggle direction">desc</button>
+        <button class="dir" id="repBtn" title="Group the current view by a dimension">Report</button>
+        <button class="dir hidden" id="newBtn" title="Add a contact to the book">New contact</button>
+        <button class="dir" id="exportBtn" title="Export filtered set to CSV">Export CSV</button>
+      </div>
+      <div id="bulkBar" class="bulkbar hidden">
+        <span><b id="bulkCount">0</b> selected</span>
+        <select id="bulkStatus"><option value="">Set pipeline status…</option></select>
+        <button id="bulkTagBtn" class="bb">Add tag</button>
+        <button id="bulkTaskBtn" class="bb">Add task</button>
+        <select id="bulkAssign"><option value="">Assign owner…</option></select>
+        <div class="sp"></div>
+        <button id="bulkClear" class="bb ghost">Clear selection</button>
+      </div>
+      <div class="ghead"><div class="selcell"><input type="checkbox" id="selAll" title="Select all on this page"></div><div>Contact</div><div>Segment</div><div>Location</div><div class="num">AUM</div><div style="text-align:center">Pri</div><div style="text-align:center">Status</div></div>
+      <div class="scroll" id="scroll">
+        <div id="rows"></div>
+        <div id="loadmore" class="loadmore hidden"><button id="loadmoreBtn">Load more</button></div>
+        <div id="empty" class="empty hidden">No contacts match these filters.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- DETAIL DRAWER -->
+<div id="overlay" class="overlay"></div>
+<aside id="drawer" class="drawer"></aside>
+
+<!-- DASHBOARD MODAL -->
+<div id="dash" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="dashClose">&times;</button>
+    <h2>Dashboard</h2>
+    <div class="modal-sub"><b id="dTotal">0</b> records · <b id="dSeg">0</b> segments · <b id="dCo">0</b> countries</div>
+    <div id="dashBody"></div>
+  </div>
+</div>
+
+<!-- TASKS MODAL -->
+<div id="tasksModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="tasksClose">&times;</button>
+    <h2>My tasks</h2>
+    <button id="icsBtn" class="sf-btn" style="position:absolute;top:16px;right:52px">Calendar (.ics)</button>
+    <div class="modal-sub"><b id="tOpen">0</b> open · <b id="tOver">0</b> overdue · <b id="tDone">0</b> done</div>
+    <div class="task-add" id="taskAddWrap">
+      <input id="taskTitle" type="text" placeholder="New task (e.g. Follow up with Citadel IR)">
+      <input id="taskDue" type="date">
+      <button id="taskAddBtn">Add</button>
+    </div>
+    <div class="tabs" id="taskTabs">
+      <button class="tab on" data-f="open">Open</button>
+      <button class="tab" data-f="overdue">Overdue</button>
+      <button class="tab" data-f="done">Done</button>
+      <button class="tab" data-f="">All</button>
+    </div>
+    <div id="taskList"></div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL (admin) -->
+<div id="importModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="importClose">&times;</button>
+    <h2>Bulk import contacts</h2>
+    <div class="modal-sub">Paste either a JSON array of contact objects or raw CSV with a header row. Records with an existing <span class="mono">id</span> are replaced; the rest are appended. Each needs at least a <span class="mono">name</span>.</div>
+    <textarea id="importText" placeholder='JSON:  [{"name":"Acme Endowment","firm":"Acme University","aum_mm":5000}]&#10;&#10;or CSV:&#10;Name,Firm,Segment,AUM ($mm)&#10;Acme Endowment,Acme University,Endowment / Foundation,5000'></textarea>
+    <button id="importRun" class="save">Import</button>
+    <div id="importMsg" class="savemsg"></div>
+  </div>
+</div>
+
+<!-- COMPOSE MODAL (mail merge) -->
+<div id="composeModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="composeClose">&times;</button>
+    <h2>Compose email</h2>
+    <div class="modal-sub" id="composeWho"></div>
+    <label class="cl">Template</label>
+    <select id="composeTpl"><option value="">Select a template…</option></select>
+    <label class="cl">To</label>
+    <input id="composeTo" type="text" placeholder="recipient email">
+    <label class="cl">Subject</label>
+    <input id="composeSubject" type="text" placeholder="Subject">
+    <label class="cl">Body</label>
+    <textarea id="composeBody" placeholder="Choose a template to merge in this contact's details, or write your own."></textarea>
+    <div class="compose-actions">
+      <button id="composeCopy" class="save" style="flex:1">Copy</button>
+      <button id="composeMail" class="dir" style="padding:11px 16px">Open in email</button>
+    </div>
+    <div id="composeMsg" class="savemsg"></div>
+  </div>
+</div>
+
+<!-- USERS MODAL (admin) -->
+<div id="usersModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="usersClose">&times;</button>
+    <h2>Team members</h2>
+    <button id="testMailBtn" class="sf-btn" style="position:absolute;top:16px;right:52px">Send test email</button>
+    <div class="modal-sub">Self-registration is off: add people here. <b>admin</b> manages users and data, <b>editor</b> writes pipeline, activities, tasks, tags, and templates, <b>viewer</b> is read-only.</div>
+    <div class="uadd">
+      <input id="uaName" placeholder="Name">
+      <input id="uaEmail" type="email" placeholder="name@ninepoint.com">
+      <input id="uaPass" type="password" placeholder="Temporary password">
+      <select id="uaRole"><option value="viewer">viewer</option><option value="editor">editor</option><option value="admin">admin</option></select>
+      <button id="uaAdd" class="sf-btn primary">Add user</button>
+    </div>
+    <div id="uMsg" class="sf-msg"></div>
+    <div id="usersList"></div>
+  </div>
+</div>
+
+<!-- AUDIT MODAL -->
+<div id="auditModal" class="modal hidden">
+  <div class="modal-card wide">
+    <button class="modal-close" id="auditClose">&times;</button>
+    <h2>Audit log</h2>
+    <div class="modal-sub">Every material action is recorded: who did it, to what, and when. Newest first.</div>
+    <div class="aud-bar">
+      <input id="audSearch" placeholder="Filter by person, action, or entity">
+      <select id="audLimit">
+        <option value="100">Last 100</option>
+        <option value="250" selected>Last 250</option>
+        <option value="1000">Last 1000</option>
+      </select>
+      <button id="audExport" class="sf-btn">Export CSV</button>
+    </div>
+    <div id="audMsg" class="sf-msg"></div>
+    <div class="aud-wrap"><table class="aud"><thead><tr>
+      <th>When</th><th>Who</th><th>Action</th><th>On</th><th>Detail</th>
+    </tr></thead><tbody id="audRows"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ACCOUNT MODAL -->
+<div id="acctModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="acctClose">&times;</button>
+    <h2>Account</h2>
+    <div class="modal-sub" id="acctInfo"></div>
+    <h3 class="sf-h">Change password</h3>
+    <div class="sf-grid" style="grid-template-columns:1fr">
+      <label>Current password<input id="pwCur" type="password" autocomplete="current-password"></label>
+      <label>New password<input id="pwNew" type="password" autocomplete="new-password" placeholder="At least 8 characters"></label>
+      <label>Confirm new password<input id="pwConf" type="password" autocomplete="new-password"></label>
+    </div>
+    <div class="sf-actions"><button id="pwSave" class="sf-btn primary">Update password</button></div>
+    <div id="pwMsg" class="sf-msg"></div>
+  </div>
+</div>
+
+<!-- ACTIVITY FEED MODAL -->
+<div id="feedModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="feedClose">&times;</button>
+    <h2>Team activity</h2>
+    <div class="modal-sub">The latest notes, calls, emails, and meetings logged across the book.</div>
+    <div id="feedList"></div>
+  </div>
+</div>
+
+<!-- TEMPLATES MANAGER (editor+) -->
+<div id="tplModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" id="tplClose">&times;</button>
+    <h2>Email templates</h2>
+    <div class="modal-sub">Use <span class="mono">{{first_name}}</span>, <span class="mono">{{name}}</span>, <span class="mono">{{firm}}</span>, <span class="mono">{{segment}}</span>, <span class="mono">{{city}}</span>, <span class="mono">{{title}}</span> as merge fields.</div>
+    <div class="tpl-wrap">
+      <div class="tpl-list" id="tplList"></div>
+      <div class="tpl-edit">
+        <input id="tplName" type="text" placeholder="Template name">
+        <input id="tplSubject" type="text" placeholder="Subject line">
+        <textarea id="tplBody" placeholder="Body with {{merge}} fields"></textarea>
+        <div class="tpl-edit-actions">
+          <button id="tplNew" class="dir">New</button>
+          <button id="tplSave" class="save" style="flex:1">Save</button>
+          <button id="tplDel" class="dir" style="color:#B0442E">Delete</button>
+        </div>
+        <div id="tplMsg" class="savemsg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
