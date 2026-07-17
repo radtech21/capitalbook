@@ -6,7 +6,7 @@ import { writeAudit } from '../audit.js';
 
 export const pipelineRouter = Router();
 
-const STATUSES = ['New', 'Contacted', 'Replied', 'Meeting', 'Passed'] as const;
+const STATUSES = ['New', 'Contacted', 'Replied', 'Meeting', 'Won', 'Passed'] as const;
 const pipeSchema = z.object({
   status: z.enum(STATUSES).optional(),
   due: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
