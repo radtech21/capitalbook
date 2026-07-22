@@ -60,8 +60,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1470)
 UPDATE contacts SET
   firm = 'Manulife Wealth',
   title = 'Senior Wealth Advisor, Portfolio Manager',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Left Richardson Wealth for Manulife Wealth Inc. (reported Sept 2025, amid the iA acquisition) — "Bakish Wealth," ~$350M AUM, 7-person team. New office address unverified (one snippet: 6265 Ch. de la Côte-de-Liesse, Saint-Laurent, QC); old Richardson email likely stale — verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Left Richardson Wealth for Manulife Wealth Inc. (reported Sept 2025, amid the iA acquisition) — "Bakish Wealth," ~$350M AUM, 7-person team. New office address unverified (one snippet: 6265 Ch. de la Côte-de-Liesse, Saint-Laurent, QC); old Richardson email likely stale — verify before outreach.')), 512)
 WHERE id = 1366;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1366, x.name, x.role FROM (
@@ -77,7 +77,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1366)
 -- 1713 Terry Wright, Raymond James (LT Wealth Management Partners), Vancouver, BC
 UPDATE contacts SET
   address = '555 Burrard Street, 2nd Floor',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team is "LT Wealth Management Partners" (formerly Wright Wealth Management Group, joined RJ from NBF in 2017). Team member Chris Mills also appears heading "Mills Wealth Management" (RJ North Vancouver) — possible spin-off, verify roster.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team is "LT Wealth Management Partners" (formerly Wright Wealth Management Group, joined RJ from NBF in 2017). Team member Chris Mills also appears heading "Mills Wealth Management" (RJ North Vancouver) — possible spin-off, verify roster.')), 512)
 WHERE id = 1713;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1713, x.name, x.role FROM (
@@ -90,7 +90,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1713)
 -- 1764 Simon Lamontagne, ScotiaMcLeod (Groupe Lamontagne), Laval, QC
 UPDATE contacts SET
   address = '600 Rue Lucien-Paiement, Suite 1210',
-  data_flags = TRIM(CONCAT(data_flags, ' | Minor: a YellowPages listing formerly under his name now shows "Francois Laurin - ScotiaMcLeod" at the same address/phone — likely a directory reassignment, not a confirmed departure; team site still lists Lamontagne as lead.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Minor: a YellowPages listing formerly under his name now shows "Francois Laurin - ScotiaMcLeod" at the same address/phone — likely a directory reassignment, not a confirmed departure; team site still lists Lamontagne as lead.')), 512)
 WHERE id = 1764;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1764, x.name, x.role FROM (
@@ -105,7 +105,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1764)
 -- 1570 Doug Lochhead, iA Private Wealth (Granite Financial Group), Winnipeg, MB
 UPDATE contacts SET
   address = '4 Donald Street',
-  data_flags = TRIM(CONCAT(data_flags, ' | Succession in progress: daughter Andrea Lochhead joined Granite Financial Group in 2023 to take over the practice (Globe and Mail); Doug remains active and also runs Next Chapter Succession Planning. Separate practice from Endeavour Wealth Management (Grant White).'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Succession in progress: daughter Andrea Lochhead joined Granite Financial Group in 2023 to take over the practice (Globe and Mail); Doug remains active and also runs Next Chapter Succession Planning. Separate practice from Endeavour Wealth Management (Grant White).')), 512)
 WHERE id = 1570;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1570, x.name, x.role FROM (
@@ -120,7 +120,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1570)
 -- 1471 Neil Gregory, CG Wealth Management (The Cartograph Group), Calgary, AB
 UPDATE contacts SET
   address = '520 3rd Avenue SW, Suite 2400',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team rebranded from "Gregory Wei Mutch Wealth Counsel" to "The Cartograph Group" (joined CG from Richardson GMP in 2020, ~$350M AUM). Same CG Calgary suite as The Harrison Group — separate practices.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team rebranded from "Gregory Wei Mutch Wealth Counsel" to "The Cartograph Group" (joined CG from Richardson GMP in 2020, ~$350M AUM). Same CG Calgary suite as The Harrison Group — separate practices.')), 512)
 WHERE id = 1471;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1471, x.name, x.role FROM (
@@ -145,7 +145,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1424)
 -- 1771 Steve LaRochelle, ScotiaMcLeod, Medicine Hat, AB
 UPDATE contacts SET
   address = 'Suite 210, 12 Gehring Road SW',
-  data_flags = TRIM(CONCAT(data_flags, ' | Former "LaRochelle O''Reilly Financial Advisory Group" has split — Todd/Ryan O''Reilly now operate the separate O''Reilly Advisory Group at the same address; Steve continues under his own standalone Scotia team site.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Former "LaRochelle O''Reilly Financial Advisory Group" has split — Todd/Ryan O''Reilly now operate the separate O''Reilly Advisory Group at the same address; Steve continues under his own standalone Scotia team site.')), 512)
 WHERE id = 1771;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1771, x.name, x.role FROM (
@@ -159,8 +159,8 @@ UPDATE contacts SET
   firm = 'Richardson Wealth Ltd',
   title = 'Investment Advisor, Wealth Advisor',
   address = '525 8th Avenue SW, Suite 4700 (Eighth Avenue Place)',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Left BMO Nesbitt Burns after ~27 years for Richardson Wealth Ltd., Calgary, June 2024 — "Broadley and Associates." Same tower as the BMO branch but Richardson is Suite 4700 (BMO is Suite 1100); old BMO email stale — verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Left BMO Nesbitt Burns after ~27 years for Richardson Wealth Ltd., Calgary, June 2024 — "Broadley and Associates." Same tower as the BMO branch but Richardson is Suite 4700 (BMO is Suite 1100); old BMO email stale — verify before outreach.')), 512)
 WHERE id = 1529;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1529, x.name, x.role FROM (
@@ -185,8 +185,8 @@ UPDATE contacts SET
   firm = 'NBF Wealth Management',
   title = 'Wealth Advisor & Portfolio Manager',
   address = 'Suite 1800, 10175 101 Street NW',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Left Richardson Wealth post-iA acquisition; now co-leads the "Campbell Germain Advisory Group" at NBF Edmonton (move date unconfirmed, no press coverage found; identity verified by matching bios). Old Richardson email stale — verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Left Richardson Wealth post-iA acquisition; now co-leads the "Campbell Germain Advisory Group" at NBF Edmonton (move date unconfirmed, no press coverage found; identity verified by matching bios). Old Richardson email stale — verify before outreach.')), 512)
 WHERE id = 1388;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1388, x.name, x.role FROM (
@@ -225,7 +225,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1772)
 -- 1588 Darren Luck, CIBC Wood Gundy (Luck Financial Group), Windsor, ON (weak signal, applied + flagged)
 UPDATE contacts SET
   address = '2510 Ouellette Avenue, Suite 101',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: longtime team member Stephanie Senteris (with the group since 2011) now has a Wellington-Altus advisor profile — possible departure or team move; Darren''s own current CIBC status unconfirmed (newest team publications found are from 2022). Verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: longtime team member Stephanie Senteris (with the group since 2011) now has a Wellington-Altus advisor profile — possible departure or team move; Darren''s own current CIBC status unconfirmed (newest team publications found are from 2022). Verify before outreach.')), 512)
 WHERE id = 1588;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1588, x.name, x.role FROM (

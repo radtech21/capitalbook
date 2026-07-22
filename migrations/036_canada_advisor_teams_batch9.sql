@@ -85,7 +85,7 @@ UPDATE contacts SET address = '1525 Carling Avenue, Suite 504' WHERE id = 1663;
 -- 1664 Dan Nolan, IPC Securities, Ottawa, ON (address only — no team confirmed; NOT same team as 1663)
 UPDATE contacts SET
   address = '702-2210 Prince of Wales Drive',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: since ~July 2024 shows as "VP, Pinnacle Advisor Growth & Development" at IPC (a corporate HQ role, not client-facing) and is absent from the public advisor directory — continued client-facing status uncertain, needs manual verification.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: since ~July 2024 shows as "VP, Pinnacle Advisor Growth & Development" at IPC (a corporate HQ role, not client-facing) and is absent from the public advisor directory — continued client-facing status uncertain, needs manual verification.')), 512)
 WHERE id = 1664;
 
 -- 1285 Keith Matthews, Tulett, Matthews & Associates, Kirkland, QC
@@ -165,7 +165,7 @@ UPDATE contacts SET address = '595 Parkside Drive, Unit 1' WHERE id = 1702;
 -- 1694 Chad Woolsey, Raymond James, Saskatoon, SK
 UPDATE contacts SET
   address = '122–1st Avenue South, Suite 600',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: a June 2025 LinkedIn post stated he was retiring at the end of 2025 — not independently confirmed on a current roster; needs manual verification.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: a June 2025 LinkedIn post stated he was retiring at the end of 2025 — not independently confirmed on a current roster; needs manual verification.')), 512)
 WHERE id = 1694;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1694, x.name, x.role FROM (

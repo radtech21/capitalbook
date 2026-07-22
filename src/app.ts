@@ -11,6 +11,7 @@ import { tasksRouter } from './routes/tasks.js';
 import { tagsRouter } from './routes/tags.js';
 import { viewsRouter } from './routes/views.js';
 import { templatesRouter } from './routes/templates.js';
+import { organizationsRouter } from './routes/organizations.js';
 import { contactCount } from './db.js';
 
 export function createApp() {
@@ -41,6 +42,7 @@ export function createApp() {
   app.use('/api/pipeline', pipelineRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/audit', auditRouter);
+  app.use('/api/organizations', organizationsRouter);
 
   // 404 for unknown API routes
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

@@ -12,14 +12,21 @@ const viewSchema = z.object({
   shared: z.boolean().optional(),
 });
 
-// GET /api/views -> the caller's own views plus any shared by others
+// GET /api/views -> the caller's own views plus any shared by teammates in
+// the same org (a client org must not see Capital Book's shared views, or
+// vice versa; platform-org callers see shared views across every org, same
+// as their unrestricted contact visibility).
 viewsRouter.get('/', requireAuth, async (req, res) => {
+  const sharedClause = req.user!.isPlatformOrg ? 'v.shared = 1' : 'v.shared = 1 AND u.org_id = ?';
+  const params = req.user!.isPlatformOrg
+    ? [req.user!.uid, req.user!.uid]
+    : [req.user!.uid, req.user!.uid, req.user!.orgId];
   const rows = await q(
     `SELECT v.id, v.name, v.query, v.shared, v.user_id, u.email AS owner, (v.user_id = ?) AS mine
      FROM saved_views v LEFT JOIN users u ON u.id = v.user_id
-     WHERE v.user_id = ? OR v.shared = 1
+     WHERE v.user_id = ? OR (${sharedClause})
      ORDER BY v.name`,
-    [req.user!.uid, req.user!.uid]
+    params
   );
   return res.json({ views: rows });
 });

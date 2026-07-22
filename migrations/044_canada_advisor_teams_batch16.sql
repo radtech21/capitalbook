@@ -53,7 +53,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1381)
 -- 1723 Jeremy Clark, CH Financial, Calgary, AB (firm-level affiliation flagged)
 UPDATE contacts SET
   address = 'Suite 450, 700 4 Avenue SW',
-  data_flags = TRIM(CONCAT(data_flags, ' | CH Financial has merged/partnered with Optimize Wealth Management (both sites now co-branded "CH Financial... With Optimize"; Clark also listed as an Optimize Wealth Planner) — exact nature of the relationship unconfirmed, verify.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CH Financial has merged/partnered with Optimize Wealth Management (both sites now co-branded "CH Financial... With Optimize"; Clark also listed as an Optimize Wealth Planner) — exact nature of the relationship unconfirmed, verify.')), 512)
 WHERE id = 1723;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1723, x.name, x.role FROM (
@@ -81,7 +81,7 @@ UPDATE contacts SET
   title = 'Portfolio Manager',
   address = '10202B 100 Avenue',
   email = 'steve.switzer@iaprivatewealth.ca',
-  data_flags = TRIM(CONCAT(data_flags, ' | Moved practice "Switzer Financial Services" from Raymond James to iA Private Wealth, ~Oct 2023 — same Fort Saskatchewan office.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Moved practice "Switzer Financial Services" from Raymond James to iA Private Wealth, ~Oct 2023 — same Fort Saskatchewan office.')), 512)
 WHERE id = 1700;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1700, x.name, x.role FROM (
@@ -117,7 +117,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1457)
 -- 1699 Sam Yau, Raymond James (Yau & Associates Wealth Advisory Group), Sherwood Park, AB
 UPDATE contacts SET
   address = 'Suite 828, 8005 Emerald Drive, Sherwood Park, AB T8H 0P1',
-  data_flags = TRIM(CONCAT(data_flags, ' | Primary office is now Sherwood Park (Emerald Hills), not Edmonton proper; also affiliated with the Edmonton corporate branch, Suite 2300, Scotia Place Tower 1, 10060 Jasper Avenue.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Primary office is now Sherwood Park (Emerald Hills), not Edmonton proper; also affiliated with the Edmonton corporate branch, Suite 2300, Scotia Place Tower 1, 10060 Jasper Avenue.')), 512)
 WHERE id = 1699;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1699, x.name, x.role FROM (
@@ -143,8 +143,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1538)
 UPDATE contacts SET
   firm = 'Wellington-Altus Private Wealth',
   title = 'Senior Wealth Advisor and Principal',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Left Raymond James (10+ years there) for Wellington-Altus — now leads "NOW Wealth Management Solutions," Calgary. New office at "11th Avenue Place" per team materials; exact street address unverified. Old Raymond James email/address stale — verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Left Raymond James (10+ years there) for Wellington-Altus — now leads "NOW Wealth Management Solutions," Calgary. New office at "11th Avenue Place" per team materials; exact street address unverified. Old Raymond James email/address stale — verify before outreach.')), 512)
 WHERE id = 1693;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1693, x.name, x.role FROM (
@@ -162,7 +162,7 @@ UPDATE contacts SET
   firm = 'iA Private Wealth',
   title = 'Senior Mutual Funds Advisor',
   address = '1500 Rue du Collège, Suite 300',
-  data_flags = TRIM(CONCAT(data_flags, ' | Kelson Wealth Management moved from Manulife to iA Private Wealth Inc. — same Saint-Laurent office.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Kelson Wealth Management moved from Manulife to iA Private Wealth Inc. — same Saint-Laurent office.')), 512)
 WHERE id = 1491;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1491, x.name, x.role FROM (
@@ -223,8 +223,8 @@ UPDATE contacts SET
   firm = 'Wellington-Altus Private Wealth',
   title = 'Senior Wealth Advisor',
   address = '920 Tungsten Street, Suite 101',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Left IG Private Wealth Management for Wellington-Altus — "Lovis & Partners Private Wealth," new office opened ~Dec 2023. Old IG email/address stale — verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Left IG Private Wealth Management for Wellington-Altus — "Lovis & Partners Private Wealth," new office opened ~Dec 2023. Old IG email/address stale — verify before outreach.')), 512)
 WHERE id = 1292;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1292, x.name, x.role FROM (
@@ -248,7 +248,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1305)
 -- 1323 Stephen Jones, Assante Wealth Management (Unified Advisory Group), Waterloo, ON
 UPDATE contacts SET
   address = 'Suite 1002, 20 Erb Street West',
-  data_flags = TRIM(CONCAT(data_flags, ' | Practice rebranded/merged from "Jones Private Client" to "Unified Advisory Group" (Waterloo + Bowmanville, apparently combined with Mike Gomes''s practice) — still active Senior Financial Advisor, not a departure.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Practice rebranded/merged from "Jones Private Client" to "Unified Advisory Group" (Waterloo + Bowmanville, apparently combined with Mike Gomes''s practice) — still active Senior Financial Advisor, not a departure.')), 512)
 WHERE id = 1323;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1323, x.name, x.role FROM (

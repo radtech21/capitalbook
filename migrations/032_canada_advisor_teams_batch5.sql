@@ -230,8 +230,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1451)
 -- at top of file: confirmed deceased January 2025, needs a human decision.
 UPDATE contacts
 SET reachable = 0,
-    data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
+    data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
       CASE WHEN COALESCE(data_flags, '') = '' THEN '' ELSE ' | ' END,
-      'DECEASED (Jan 17, 2025). Practice had already moved from CIBC Wood Gundy to Canaccord Genuity (Nov 2024) before his death. Surviving team "Sutherland Investment Group" continues under Canaccord Genuity, 50 O''Connor Street Suite 1120, Ottawa, with no single clear successor (Tom Porteous, Julia McClintock, Alex Kealey) — needs human decision on whether/how to add a successor contact.'))
+      'DECEASED (Jan 17, 2025). Practice had already moved from CIBC Wood Gundy to Canaccord Genuity (Nov 2024) before his death. Surviving team "Sutherland Investment Group" continues under Canaccord Genuity, 50 O''Connor Street Suite 1120, Ottawa, with no single clear successor (Tom Porteous, Julia McClintock, Alex Kealey) — needs human decision on whether/how to add a successor contact.')), 512)
 WHERE id = 1599
   AND data_flags NOT LIKE '%DECEASED%';

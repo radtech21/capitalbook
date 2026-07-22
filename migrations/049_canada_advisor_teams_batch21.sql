@@ -21,18 +21,18 @@
 
 -- 1620 Sandra Smith, CIBC Wood Gundy, Vancouver, BC (unverifiable, flag only)
 UPDATE contacts SET
-  data_flags = TRIM(CONCAT(data_flags, ' | Could not verify: no CIBC Wood Gundy advisor named "Sandra Smith" locatable in Vancouver via advisor locator, bio pages, LinkedIn, or press. Recommend manual verification (call Vancouver Bentall office, 604-806-5516).'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Could not verify: no CIBC Wood Gundy advisor named "Sandra Smith" locatable in Vancouver via advisor locator, bio pages, LinkedIn, or press. Recommend manual verification (call Vancouver Bentall office, 604-806-5516).')), 512)
 WHERE id = 1620;
 
 -- 1803 Dorothy Keating, Odlum Brown, Vancouver, BC (unverifiable, flag only)
 UPDATE contacts SET
-  data_flags = TRIM(CONCAT(data_flags, ' | Could not verify: no advisor bio, LinkedIn, press, or registry record found linking this name to Odlum Brown at all. Possible CRM name/spelling issue.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Could not verify: no advisor bio, LinkedIn, press, or registry record found linking this name to Odlum Brown at all. Possible CRM name/spelling issue.')), 512)
 WHERE id = 1803;
 
 -- 1807 Kevin Algar, AlgarVirtue, Calgary, AB
 UPDATE contacts SET
   address = '2424 4 St SW, Suite 920',
-  data_flags = TRIM(CONCAT(data_flags, ' | Firm co-founder Jim Virtue sold his stake ~2010 and became PPI CEO (retired ~Dec 2025) — no longer an active AlgarVirtue partner, excluded from roster.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Firm co-founder Jim Virtue sold his stake ~2010 and became PPI CEO (retired ~Dec 2025) — no longer an active AlgarVirtue partner, excluded from roster.')), 512)
 WHERE id = 1807;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1807, x.name, x.role FROM (

@@ -38,15 +38,15 @@
 -- 1362 René Gagnon — DECEASED. Deliberately no address/team applied.
 UPDATE contacts SET
   reachable = 0,
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'DECEASED (Feb 20, 2026, age 58). Practice had been renamed "Groupe Gagnon Arsenault" (Feb 2025) when Benoît Arsenault was made partner; surviving team continues at Desjardins Securities, 100 rue Julien-Réhel, Bureau 301, Rimouski (Arsenault, Mélanie Tapp, Pier-Luc Perreault) — needs human decision on whether/how to add a successor contact.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'DECEASED (Feb 20, 2026, age 58). Practice had been renamed "Groupe Gagnon Arsenault" (Feb 2025) when Benoît Arsenault was made partner; surviving team continues at Desjardins Securities, 100 rue Julien-Réhel, Bureau 301, Rimouski (Arsenault, Mélanie Tapp, Pier-Luc Perreault) — needs human decision on whether/how to add a successor contact.')), 512)
 WHERE id = 1362;
 
 -- 1480 Steve Barban — DECEASED. Deliberately no address/team applied.
 UPDATE contacts SET
   reachable = 0,
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'DECEASED (Oct 30, 2024, age 59). Surviving colleague Russell Hope (Financial Advisor) continues the Gentry Capital practice under Manulife Securities at 1900 City Park Drive, Suite 508, Ottawa — needs human decision on whether/how to add a successor contact.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'DECEASED (Oct 30, 2024, age 59). Surviving colleague Russell Hope (Financial Advisor) continues the Gentry Capital practice under Manulife Securities at 1900 City Park Drive, Suite 508, Ottawa — needs human decision on whether/how to add a successor contact.')), 512)
 WHERE id = 1480;
 
 -- 1794 Chris Carter, ScotiaMcLeod (The Cook Team), Vancouver, BC

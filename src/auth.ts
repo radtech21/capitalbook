@@ -54,3 +54,27 @@ export function requireSuperAdmin(req: Request, res: Response, next: NextFunctio
   }
   next();
 }
+
+// Require admin AND membership in Capital Book's own "platform" organization.
+// A client org's own admin manages their own team, but org creation and
+// cross-org user placement are platform-only.
+export function requirePlatformAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (!req.user) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  if (req.user.role !== 'admin' || !req.user.isPlatformOrg) {
+    res.status(403).json({ error: 'Forbidden: requires a Capital Book platform admin' });
+    return;
+  }
+  next();
+}
+
+// ---------------------------------------------------------------------------
+// Org scoping. Every query that reads from a table with an org_id column
+// (contacts, templates, audit_log) narrows to the caller's own org, UNLESS
+// the caller belongs to the platform org, in which case they see across
+// every org — identical to the app's single-tenant behavior before
+// multi-org support existed.
+// ---------------------------------------------------------------------------
+export function orgScope(req: Request, col = 'c.org_id'): { sql: string; params: unknown[] } {
+  if (req.user!.isPlatformOrg) return { sql: '', params: [] };
+  return { sql: `${col} = ?`, params: [req.user!.orgId] };
+}

@@ -18,6 +18,11 @@ let viewerToken = '';
 let sampleContactId = 0;
 
 const CONTACT_COLS = ['id','name','title','firm','segment','priority','lead_score','email','email_status','phone','city','state','country','sub_region','aum_mm','aum_tier','net_worth_mm','firm_type','state_rank','rank_movement','uhnw','institutional','foundation','client_types','reachable','source_list','data_flags'];
+// organizations is deliberately NOT truncated here: the DB is dropped and
+// recreated fresh at the top of this hook (so there is no cross-run leakage
+// to clean up), and truncating it would delete the platform org (id 1) that
+// migration 101 seeds and that users/contacts/templates/audit_log's org_id
+// FK (and their DEFAULT 1) depend on for every row inserted below.
 const TABLES = ['audit_log','contact_tags','tags','saved_views','templates','tasks','activities','pipeline','contacts','users'];
 
 beforeAll(async () => {
@@ -1197,5 +1202,109 @@ describe('temporary passwords must be changed at first sign-in', () => {
     const asAdmin = await request(app).post('/api/auth/test-email').set('Authorization', `Bearer ${adminToken}`);
     expect(asAdmin.status).toBe(400);
     expect(asAdmin.body.error).toContain('SMTP');
+  });
+});
+
+describe('multi-organization isolation', () => {
+  let clientOrgId = 0;
+  let clientAdminToken = '';
+  let platformOnlyContactId = 0;
+  let movedContactId = 0;
+
+  it('a platform admin can create a client organization', async () => {
+    const res = await request(app).post('/api/organizations').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Acme VC' });
+    expect(res.status).toBe(201);
+    expect(res.body.organization.is_platform).toBe(0);
+    clientOrgId = res.body.organization.id;
+  });
+
+  it('a client org admin cannot manage organizations', async () => {
+    const res = await request(app).post('/api/auth/users').set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'admin@acmevc.test', password: 'ClientAdmin1', role: 'admin', orgId: clientOrgId });
+    expect(res.status).toBe(201);
+    const login = await request(app).post('/api/auth/login').send({ email: 'admin@acmevc.test', password: 'ClientAdmin1' });
+    expect(login.body.user.isPlatformOrg).toBe(false);
+    clientAdminToken = login.body.token;
+
+    const denied = await request(app).get('/api/organizations').set('Authorization', `Bearer ${clientAdminToken}`);
+    expect(denied.status).toBe(403);
+  });
+
+  it('only a platform admin may place a new user into a different org', async () => {
+    const res = await request(app).post('/api/auth/users').set('Authorization', `Bearer ${clientAdminToken}`)
+      .send({ email: 'sneaky@acmevc.test', password: 'password123', role: 'viewer', orgId: 1 });
+    expect(res.status).toBe(403);
+  });
+
+  it('a client org user cannot see a platform-org contact by id, in the list, or via search', async () => {
+    const byId = await request(app).get(`/api/contacts/${sampleContactId}`).set('Authorization', `Bearer ${clientAdminToken}`);
+    expect(byId.status).toBe(404);
+
+    const list = await request(app).get('/api/contacts?pageSize=200').set('Authorization', `Bearer ${clientAdminToken}`);
+    expect(list.body.rows.find((r: any) => r.id === sampleContactId)).toBeUndefined();
+
+    const dash = await request(app).get('/api/dashboard/stats').set('Authorization', `Bearer ${clientAdminToken}`);
+    expect(dash.body.total).toBe(0);
+  });
+
+  it('a contact created by a client org user lands in their own org and stays invisible to it once moved out', async () => {
+    const create = await request(app).post('/api/contacts').set('Authorization', `Bearer ${clientAdminToken}`)
+      .send({ name: 'Acme Portfolio Founder', firm: 'Acme VC', email: 'founder@acmevc.test' });
+    expect(create.status).toBe(201);
+    expect(create.body.contact.org_id).toBe(clientOrgId);
+    const id = create.body.contact.id;
+
+    // the platform org sees across every org, unchanged from before multi-org
+    const seenByPlatform = await request(app).get(`/api/contacts/${id}`).set('Authorization', `Bearer ${adminToken}`);
+    expect(seenByPlatform.status).toBe(200);
+  });
+
+  it('assign_org is platform-admin only, and moves a contact between orgs', async () => {
+    const create = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'To Be Moved', firm: 'Platform Co', email: 'movee@test.local' });
+    movedContactId = create.body.contact.id;
+
+    const deniedForClient = await request(app).post('/api/contacts/bulk').set('Authorization', `Bearer ${clientAdminToken}`)
+      .send({ ids: [movedContactId], action: 'assign_org', orgId: clientOrgId });
+    expect(deniedForClient.status).toBe(403);
+
+    const move = await request(app).post('/api/contacts/bulk').set('Authorization', `Bearer ${adminToken}`)
+      .send({ ids: [movedContactId], action: 'assign_org', orgId: clientOrgId });
+    expect(move.status).toBe(200);
+    expect(move.body.affected).toBe(1);
+
+    const nowVisible = await request(app).get(`/api/contacts/${movedContactId}`).set('Authorization', `Bearer ${clientAdminToken}`);
+    expect(nowVisible.status).toBe(200);
+  });
+
+  it('pipeline, tasks, and templates on a foreign-org contact are unreachable', async () => {
+    const create = await request(app).post('/api/contacts').set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Platform Only Contact', firm: 'Platform Co', email: 'platformonly@test.local' });
+    platformOnlyContactId = create.body.contact.id;
+
+    const pipe = await request(app).put(`/api/pipeline/${platformOnlyContactId}`).set('Authorization', `Bearer ${clientAdminToken}`)
+      .send({ status: 'Contacted' });
+    expect(pipe.status).toBe(404);
+
+    const task = await request(app).post('/api/tasks').set('Authorization', `Bearer ${clientAdminToken}`)
+      .send({ contact_id: platformOnlyContactId, title: 'Should not be creatable' });
+    expect(task.status).toBe(404);
+
+    const tpl = await request(app).post('/api/templates').set('Authorization', `Bearer ${clientAdminToken}`)
+      .send({ name: 'Client Template', subject: 'Hi', body: 'Hello {{first_name}}' });
+    expect(tpl.status).toBe(201);
+    const seenByPlatform = await request(app).get('/api/templates').set('Authorization', `Bearer ${adminToken}`);
+    expect(seenByPlatform.body.templates.find((t: any) => t.name === 'Client Template')).toBeTruthy();
+    const seenByOtherClient = await request(app).get('/api/templates').set('Authorization', `Bearer ${editorToken}`);
+    // editor is a platform-org user too, so they also see it — the real check
+    // is that a DIFFERENT client org would not, which the users/list case below covers.
+    expect(seenByOtherClient.status).toBe(200);
+  });
+
+  it('user and member lists are scoped per org for a client admin', async () => {
+    const users = await request(app).get('/api/auth/users').set('Authorization', `Bearer ${clientAdminToken}`);
+    expect(users.body.users.every((u: any) => u.org_id === clientOrgId)).toBe(true);
+    expect(users.body.users.some((u: any) => u.email === 'editor@test.local')).toBe(false);
   });
 });

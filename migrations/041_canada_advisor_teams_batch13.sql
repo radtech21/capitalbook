@@ -42,14 +42,14 @@
 UPDATE contacts SET
   reachable = 0,
   address = 'Suite 2200, 609 Granville St (former office)',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'LEFT WEALTH MANAGEMENT: quit advising to become Co-Founder & CEO of Fox Fold (Vancouver startup, launched Feb 2024, $5M Series A). The Ludo Group at CG dissolved; team site offline. No confirmed successor at Canaccord.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'LEFT WEALTH MANAGEMENT: quit advising to become Co-Founder & CEO of Fox Fold (Vancouver startup, launched Feb 2024, $5M Series A). The Ludo Group at CG dissolved; team site offline. No confirmed successor at Canaccord.')), 512)
 WHERE id = 1462;
 
 -- 1526 Thalia Kingsford, BMO Nesbitt Burns (Kingsford & Associates), Calgary, AB
 UPDATE contacts SET
   address = '525 8th Avenue SW, Suite 1100 (Eighth Avenue Place, East Tower)',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: team rebranded "Smith Soutière Wealth Management" (after Cheryl Smith and Stacy Soutière) at the same office, consistent with her published succession plan; her LinkedIn still shows her active at BMO — verify status before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: team rebranded "Smith Soutière Wealth Management" (after Cheryl Smith and Stacy Soutière) at the same office, consistent with her published succession plan; her LinkedIn still shows her active at BMO — verify status before outreach.')), 512)
 WHERE id = 1526;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1526, x.name, x.role FROM (
@@ -75,7 +75,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1704)
 -- 1391 Craig Mallender, NBF Wealth Management, Windsor, ON
 UPDATE contacts SET
   address = '1 Riverside Dr. W, Suite 600',
-  data_flags = TRIM(CONCAT(data_flags, ' | Practice now operates under the multi-office "Fairway Wealth Management" NBF team (London/Toronto/Waterloo/Chatham/Windsor) — affiliation change, still at NBF Windsor.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Practice now operates under the multi-office "Fairway Wealth Management" NBF team (London/Toronto/Waterloo/Chatham/Windsor) — affiliation change, still at NBF Windsor.')), 512)
 WHERE id = 1391;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1391, x.name, x.role FROM (
@@ -92,7 +92,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1391)
 -- 1520 Richard Goulet, BMO Nesbitt Burns (GGB & Associates Wealth Management), Ottawa, ON
 UPDATE contacts SET
   address = '979 Bank Street',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team rebranded from "Goulet Wealth Advisory Team" to "GGB & Associates Wealth Management" (Goulet, Guillemette, Bernier) — same BMO office.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team rebranded from "Goulet Wealth Advisory Team" to "GGB & Associates Wealth Management" (Goulet, Guillemette, Bernier) — same BMO office.')), 512)
 WHERE id = 1520;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1520, x.name, x.role FROM (
@@ -116,8 +116,8 @@ UPDATE contacts SET address = '1055 Dunsmuir Street, Suite 2434' WHERE id = 1615
 UPDATE contacts SET
   reachable = 0,
   address = 'Suite 1000 - 400 St. Mary Avenue',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'RETIRED: NBF pages state his "retirement plan unfolded" in 2022; team rebranded "Current Wealth Advisors" under Paul Kawchuk, Andrew Froese, and Eric Nipp (all Wealth Advisor & Portfolio Manager, same Winnipeg office) — needs human decision on whether/how to add a successor contact.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'RETIRED: NBF pages state his "retirement plan unfolded" in 2022; team rebranded "Current Wealth Advisors" under Paul Kawchuk, Andrew Froese, and Eric Nipp (all Wealth Advisor & Portfolio Manager, same Winnipeg office) — needs human decision on whether/how to add a successor contact.')), 512)
 WHERE id = 1431;
 
 -- 1820 Blake Griffith, Sun Life (Griffith & Associates), Calgary, AB
@@ -136,7 +136,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1820)
 -- 1302 April Dorey Hartwig, Raymond James (Heart Wealth Management Group), Victoria, BC
 UPDATE contacts SET
   address = '1175 Douglas Street, Suite 1000',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team rebranded from "Dorey Wealth Management" to "Heart Wealth Management Group" (name change, not a departure); same RJ Victoria suite as Sandhu Wealth — independent teams. Also AB offices in Stony Plain and Edmonton.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team rebranded from "Dorey Wealth Management" to "Heart Wealth Management Group" (name change, not a departure); same RJ Victoria suite as Sandhu Wealth — independent teams. Also AB offices in Stony Plain and Edmonton.')), 512)
 WHERE id = 1302;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1302, x.name, x.role FROM (
@@ -211,8 +211,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1241)
 UPDATE contacts SET
   firm = 'Raymond James',
   title = 'Senior Wealth Advisor & Senior Portfolio Manager',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Left Richardson Wealth for Raymond James Ltd. (announced Sept 25, 2025, closed Q4 2025) — Miles Wealth Management Group, one of three Winnipeg teams (~$1B combined AUM) in the move. New street address not yet published (old office: One Lombard Place, Suite 1100); old Richardson email likely stale — verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Left Richardson Wealth for Raymond James Ltd. (announced Sept 25, 2025, closed Q4 2025) — Miles Wealth Management Group, one of three Winnipeg teams (~$1B combined AUM) in the move. New street address not yet published (old office: One Lombard Place, Suite 1100); old Richardson email likely stale — verify before outreach.')), 512)
 WHERE id = 1430;
 
 -- 1644 Kurt Miller, CIBC Wood Gundy (The Miller Wealth Group), Edmonton, AB

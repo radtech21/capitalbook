@@ -53,7 +53,7 @@ UPDATE contacts SET
   firm = 'Scotia Wealth Management (ScotiaMcLeod) — Borden Weinstock Group',
   title = 'Senior Wealth Advisor & Portfolio Manager',
   address = '1002 Sherbrooke Street West, Suite 700',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1831;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1831, x.name, x.role FROM (
@@ -69,7 +69,7 @@ UPDATE contacts SET
   firm = 'Scotia Wealth Management (ScotiaMcLeod) — Borden Weinstock Group',
   title = 'Senior Wealth Advisor and Portfolio Manager',
   address = '1002 Sherbrooke St. West, Suite 700',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1847;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1847, x.name, x.role FROM (
@@ -84,7 +84,7 @@ UPDATE contacts SET
   firm = 'BMO Nesbitt Burns (BMO Private Wealth) — Steinmetz Wealth',
   title = 'Investment Advisor & Portfolio Manager',
   address = '1501 avenue McGill College, 32nd floor',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1838;
 
 -- 1832 Alexander Gross, CIBC Wood Gundy (Gross Hanna / Gross Financial Group)
@@ -92,7 +92,7 @@ UPDATE contacts SET
   firm = 'CIBC Wood Gundy — Gross Hanna / Gross Financial Group',
   title = 'Senior Portfolio Manager, Investment Advisor',
   address = '1250 René-Lévesque Blvd West, Suite 3100',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1832;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1832, x.name, x.role FROM (
@@ -106,7 +106,7 @@ UPDATE contacts SET
   firm = 'CIBC Wood Gundy — Salpeter Financial Advisory Group',
   title = 'Senior Wealth Advisor & Portfolio Manager (CIM)',
   address = '1250 René-Lévesque Blvd West, Suite 3100',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this office building/suite with several other independent teams identified this session — a large multi-dealer tower.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this office building/suite with several other independent teams identified this session — a large multi-dealer tower.')), 512)
 WHERE id = 1834;
 
 -- 1862 Jim Wilson, CIBC Wood Gundy (Jim Wilson Financial Group)
@@ -114,7 +114,7 @@ UPDATE contacts SET
   firm = 'CIBC Wood Gundy — Jim Wilson Financial Group',
   title = 'Investment Advisor / Senior Wealth Advisor & Portfolio Manager',
   address = '600 Boulevard de Maisonneuve Ouest, Bureau 3050',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1862;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1862, x.name, x.role FROM (
@@ -128,7 +128,7 @@ UPDATE contacts SET
   firm = 'Valeurs mobilières Desjardins / Desjardins Securities — Beaucage Bruneau Advisory Group',
   title = 'Senior Wealth Manager (Portfolio Manager), co-lead',
   address = '1170 Rue Peel, Suite 300',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1882;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1882, x.name, x.role FROM (
@@ -143,8 +143,8 @@ UPDATE contacts SET
   firm = 'IG Wealth Management — Équipe Jean-Maurice Vézina',
   title = 'Conseiller émérite (Advisor Emeritus)',
   address = '955, Grande Allée Ouest, Québec',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Semi-retired — practice transitioned to son Jean-Philippe Vézina as lead advisor in Jan 2022, advisor-emeritus role continues. Confirmed office is Québec City, not Montreal as the CRM sub-region states — treated as noise, not disqualifying.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Semi-retired — practice transitioned to son Jean-Philippe Vézina as lead advisor in Jan 2022, advisor-emeritus role continues. Confirmed office is Québec City, not Montreal as the CRM sub-region states — treated as noise, not disqualifying.')), 512)
 WHERE id = 1859;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1859, x.name, x.role FROM (
@@ -159,7 +159,7 @@ UPDATE contacts SET
   firm = 'Canaccord Genuity Wealth Management — Guidote Wealth Stewardship',
   title = 'Investment Advisor / Portfolio Manager',
   address = '1250 René-Lévesque Blvd West, Suite 2930',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this office building/suite with several other independent teams identified this session — a large multi-dealer tower.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this office building/suite with several other independent teams identified this session — a large multi-dealer tower.')), 512)
 WHERE id = 1872;
 
 -- 1845 Cielo Carin, Richardson Wealth (Cielo Carin Wealth Management)
@@ -167,7 +167,7 @@ UPDATE contacts SET
   firm = 'Richardson Wealth — Cielo Carin Wealth Management',
   title = 'Wealth Advisor, Portfolio Manager and Investment Advisor',
   address = '1250 René-Lévesque Blvd. West, Suite 1500',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this office building with several other independent teams identified this session — a large multi-dealer tower.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this office building with several other independent teams identified this session — a large multi-dealer tower.')), 512)
 WHERE id = 1845;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1845, x.name, x.role FROM (
@@ -181,7 +181,7 @@ UPDATE contacts SET
   firm = 'Canaccord Genuity Wealth Management',
   title = 'Portfolio Manager & Senior Investment Advisor',
   address = '1250 René-Lévesque West, Suite 2930',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Same suite as 1872 Peter Guidote — same firm, not confirmed whether same or separate team.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Same suite as 1872 Peter Guidote — same firm, not confirmed whether same or separate team.')), 512)
 WHERE id = 1853;
 
 -- 1851 Francis Gingras Roy, Manulife Wealth Inc. (Diligence Wealth Management)
@@ -189,7 +189,7 @@ UPDATE contacts SET
   firm = 'Manulife Wealth Inc. — Diligence Wealth Management',
   title = 'Senior Investment Advisor (CIM), co-owner',
   address = '1405 Trans-Canada Hwy, Suite 200, Dorval',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1851;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1851, x.name, x.role FROM (
@@ -207,7 +207,7 @@ UPDATE contacts SET
   firm = 'CIBC Wood Gundy — Lebuis Financial Group',
   title = 'Portfolio Manager, Investment Advisor / Wealth Advisor',
   address = '1 Place Ville Marie, Suite 4125',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Third independent CIBC Wood Gundy team confirmed at this exact suite this session (with Ansky-Coulson Group and Francois Guy Financial Group) — a large shared floor.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Third independent CIBC Wood Gundy team confirmed at this exact suite this session (with Ansky-Coulson Group and Francois Guy Financial Group) — a large shared floor.')), 512)
 WHERE id = 1870;
 
 -- 1863 Josee Lacasse, IG Wealth Management (Lacasse De La Riera & Associates)
@@ -215,7 +215,7 @@ UPDATE contacts SET
   firm = 'IG Wealth Management — Lacasse De La Riera & Associates',
   title = 'Division Director, Financial Planner, Financial Security Advisor',
   address = '8250 Décarie Boulevard, Suite 200',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1863;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1863, x.name, x.role FROM (
@@ -229,7 +229,7 @@ UPDATE contacts SET
   firm = 'Desjardins Securities (Valeurs mobilières Desjardins) — Picotte Lefebvre Group',
   title = 'Senior Wealth and Portfolio Manager (co-founder)',
   address = '1170 Peel Street, Suite 300',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Third independent Desjardins Securities team confirmed at this exact suite this session (with Sebastien St-Hilaire''s and Edith Beaucage''s teams) — a large shared floor.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Third independent Desjardins Securities team confirmed at this exact suite this session (with Sebastien St-Hilaire''s and Edith Beaucage''s teams) — a large shared floor.')), 512)
 WHERE id = 1881;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1881, x.name, x.role FROM (
@@ -244,8 +244,8 @@ UPDATE contacts SET
   firm = 'IG Private Wealth Management — Lehoux et associés',
   title = 'Financial Planner / Senior Advisor / Division Manager',
   address = '3075, chemin des Quatre-Bourgeois, bureau 104, Québec',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Confirmed office is Québec City (Ste-Foy), not Montreal as the CRM sub-region states — treated as noise, not disqualifying.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Confirmed office is Québec City (Ste-Foy), not Montreal as the CRM sub-region states — treated as noise, not disqualifying.')), 512)
 WHERE id = 1857;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1857, x.name, x.role FROM (
@@ -261,8 +261,8 @@ UPDATE contacts SET
   firm = 'RBC Dominion Securities Inc. (RBC Wealth Management)',
   title = 'Investment Advisor',
   address = '545 Promenade du Centropolis, Bureau 200, Laval',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. LIKELY MOVED from Richardson Wealth ("Beauchamp-Niding" team) to RBC Dominion Securities — inferred from recency of RBC content vs. a stale Richardson Wealth page, not a direct announcement; verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. LIKELY MOVED from Richardson Wealth ("Beauchamp-Niding" team) to RBC Dominion Securities — inferred from recency of RBC content vs. a stale Richardson Wealth page, not a direct announcement; verify before outreach.')), 512)
 WHERE id = 1835;
 
 -- 1873 Rani Baroud, BMO Nesbitt Burns (Rani Baroud Group)
@@ -270,15 +270,15 @@ UPDATE contacts SET
   firm = 'BMO Nesbitt Burns (BMO Private Wealth) — Rani Baroud Group',
   title = 'Investment Advisor & Financial Planner',
   address = '129 Rue Saint-Jacques',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Address unconfirmed directly from BMO''s own site, sourced from an aggregator.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Address unconfirmed directly from BMO''s own site, sourced from an aggregator.')), 512)
 WHERE id = 1873;
 
 -- 1836 Bernard Meloche, IG Wealth Management (no address found)
 UPDATE contacts SET
   firm = 'IG Wealth Management — Meloche & Associés Gestion Privée de Patrimoine',
   title = 'Wealth Advisor / team lead',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. No specific office address could be confirmed. Disambiguated from an unrelated "Richard Meloche" at Scotia Wealth Management.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. No specific office address could be confirmed. Disambiguated from an unrelated "Richard Meloche" at Scotia Wealth Management.')), 512)
 WHERE id = 1836;
 
 -- 1850 Eric Moore, ScotiaMcLeod (Groupe Moore), geographic conflict, plausible not fully confirmed
@@ -286,8 +286,8 @@ UPDATE contacts SET
   firm = 'ScotiaMcLeod / Scotia Wealth Management — Groupe Moore',
   title = 'Senior Wealth Advisor & Portfolio Manager, team lead',
   address = '2875, boulevard Laurier, Delta 2, 5th floor, Québec',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. PLAUSIBLE match, not fully confirmed — name+role+industry fit but confirmed office is Québec City, not Montreal as the CRM sub-region states; treated as noise but flagged for extra verification given lower overall confidence.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. PLAUSIBLE match, not fully confirmed — name+role+industry fit but confirmed office is Québec City, not Montreal as the CRM sub-region states; treated as noise but flagged for extra verification given lower overall confidence.')), 512)
 WHERE id = 1850;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1850, x.name, x.role FROM (

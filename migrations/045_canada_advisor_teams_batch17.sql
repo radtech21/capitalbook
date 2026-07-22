@@ -50,7 +50,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1460)
 -- 1735 Keith Angus McDonald, ScotiaMcLeod (The McDonald Group), London, ON
 UPDATE contacts SET
   address = '255 Queens Avenue, Suite 1700',
-  data_flags = TRIM(CONCAT(data_flags, ' | Brent Carrothers appears on both this team and Stephen Bennett''s (1737) — likely one shared associate serving both London Scotia teams.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Brent Carrothers appears on both this team and Stephen Bennett''s (1737) — likely one shared associate serving both London Scotia teams.')), 512)
 WHERE id = 1735;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1735, x.name, x.role FROM (
@@ -66,8 +66,8 @@ UPDATE contacts SET
   firm = 'RBC Dominion Securities',
   title = 'Portfolio Manager',
   address = '1055 West Georgia Street, 32nd/33rd Floor',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'LIKELY MOVED from NBF Wealth Management to RBC Dominion Securities — multiple RBC-branded sources ("Van Vliet Wealth Management Group," @rbc.com email) show this, but no dated press announcement found and no team roster could be confirmed at either firm; verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'LIKELY MOVED from NBF Wealth Management to RBC Dominion Securities — multiple RBC-branded sources ("Van Vliet Wealth Management Group," @rbc.com email) show this, but no dated press announcement found and no team roster could be confirmed at either firm; verify before outreach.')), 512)
 WHERE id = 1404;
 
 -- 1805 Drew Ferrie, Odlum Brown, Vancouver, BC (address only)
@@ -76,7 +76,7 @@ UPDATE contacts SET address = 'Suite 1100 - 250 Howe Street' WHERE id = 1805;
 -- 1737 Stephen Bennett, ScotiaMcLeod (Bennett Investment Management), London, ON
 UPDATE contacts SET
   address = '255 Queens Avenue, Suite 900',
-  data_flags = TRIM(CONCAT(data_flags, ' | Brent Carrothers appears on both this team and Keith Angus McDonald''s (1735) — likely one shared associate serving both London Scotia teams. Suite number moderately confident (some snippets suggested 1700, likely cross-contaminated from the unrelated Pillar Advisory Group in the same building).'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Brent Carrothers appears on both this team and Keith Angus McDonald''s (1735) — likely one shared associate serving both London Scotia teams. Suite number moderately confident (some snippets suggested 1700, likely cross-contaminated from the unrelated Pillar Advisory Group in the same building).')), 512)
 WHERE id = 1737;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1737, x.name, x.role FROM (
@@ -89,7 +89,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1737)
 -- 1439 Geoff Badger, CG Wealth Management (Badger Investment Group), Edmonton, AB
 UPDATE contacts SET
   address = 'Manulife Place, 10180-101 Street NW, Suite 2800',
-  data_flags = TRIM(CONCAT(data_flags, ' | Jeffrey Haggerty appears on both this team and Maglan Naidoo''s (1469) — likely one shared Wealth & Estate Planning Specialist serving both CG Edmonton practices, which are confirmed separate.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Jeffrey Haggerty appears on both this team and Maglan Naidoo''s (1469) — likely one shared Wealth & Estate Planning Specialist serving both CG Edmonton practices, which are confirmed separate.')), 512)
 WHERE id = 1439;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1439, x.name, x.role FROM (
@@ -104,8 +104,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1439)
 UPDATE contacts SET
   firm = 'Worldsource Wealth Management',
   address = '244 Pall Mall St., Suite 403',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'LIKELY MOVED from Manulife Securities/Manulife Wealth to Worldsource Wealth Management Inc. (Worldsource Securities renamed effective July 4, 2025) — a 2025 FP Canada profile and 2026 Worldsource LinkedIn post both associate her with Worldsource; not verified against CIRO''s official Advisor Report. Still President of Point B Financial Inc. at the same office.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'LIKELY MOVED from Manulife Securities/Manulife Wealth to Worldsource Wealth Management Inc. (Worldsource Securities renamed effective July 4, 2025) — a 2025 FP Canada profile and 2026 Worldsource LinkedIn post both associate her with Worldsource; not verified against CIRO''s official Advisor Report. Still President of Point B Financial Inc. at the same office.')), 512)
 WHERE id = 1489;
 
 -- 1687 Jim Struthers, Raymond James, Edmonton, AB
@@ -131,7 +131,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1277)
 -- 1486 Jim Templeton, Manulife Wealth (Simplify Wealth), St. John's, NL
 UPDATE contacts SET
   address = '84 Elizabeth Ave',
-  data_flags = TRIM(CONCAT(data_flags, ' | Practice rebranded from "JBT Financial Team" to "Simplify Wealth" — still an associate office of Manulife Wealth Inc., not a departure.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Practice rebranded from "JBT Financial Team" to "Simplify Wealth" — still an associate office of Manulife Wealth Inc., not a departure.')), 512)
 WHERE id = 1486;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1486, x.name, x.role FROM (
@@ -145,8 +145,8 @@ UPDATE contacts SET
   firm = 'Wellington-Altus Private Wealth',
   title = 'Senior Wealth Advisor',
   address = '3550 Saanich Road, Suite 102A, Munro Centre',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Left Manulife Securities/Manulife Wealth for Wellington-Altus, Victoria (Munro Centre) — now "Henderson & Williams Wealth Management" with Richard Williams. Old Manulife profile (financialadvisorsvictoria.com) is stale — verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Left Manulife Securities/Manulife Wealth for Wellington-Altus, Victoria (Munro Centre) — now "Henderson & Williams Wealth Management" with Richard Williams. Old Manulife profile (financialadvisorsvictoria.com) is stale — verify before outreach.')), 512)
 WHERE id = 1500;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1500, x.name, x.role FROM (
@@ -167,7 +167,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1582)
 -- 1731 Teresa Pedersen, ScotiaMcLeod (Pedersen Bloomfield Portfolio Management), West Vancouver, BC
 UPDATE contacts SET
   address = '1555 Marine Drive, 3rd Floor',
-  data_flags = TRIM(CONCAT(data_flags, ' | Practice now co-branded "Pedersen Bloomfield Portfolio Management" alongside Christine Bloomfield — an elevated partnership, not a departure.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Practice now co-branded "Pedersen Bloomfield Portfolio Management" alongside Christine Bloomfield — an elevated partnership, not a departure.')), 512)
 WHERE id = 1731;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1731, x.name, x.role FROM (
@@ -210,7 +210,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1769)
 -- 1469 Maglan Naidoo, CG Wealth Management (Naidoo Private Wealth), Edmonton, AB
 UPDATE contacts SET
   address = 'Manulife Place, 10180 101 Street NW, Suite 2800',
-  data_flags = TRIM(CONCAT(data_flags, ' | Jeffrey Haggerty appears on both this team and Geoff Badger''s (1439) — likely one shared Wealth & Estate Planning Specialist serving both CG Edmonton practices, which are confirmed separate.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Jeffrey Haggerty appears on both this team and Geoff Badger''s (1439) — likely one shared Wealth & Estate Planning Specialist serving both CG Edmonton practices, which are confirmed separate.')), 512)
 WHERE id = 1469;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1469, x.name, x.role FROM (

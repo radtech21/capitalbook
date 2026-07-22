@@ -47,7 +47,7 @@ UPDATE contacts SET address = 'Suite 1100 - 250 Howe Street' WHERE id = 1817;
 -- 1502 David Nobrega, Manulife Wealth dealer (Nobrega Financial), Edmonton, AB
 UPDATE contacts SET
   address = 'Suite 201, 6050 Andrews Way SW',
-  data_flags = TRIM(CONCAT(data_flags, ' | Practice is "Nobrega Financial" (his own firm) with Manulife Wealth Inc. as dealer — Manulife Securities was renamed Manulife Wealth (branding change, not a departure).'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Practice is "Nobrega Financial" (his own firm) with Manulife Wealth Inc. as dealer — Manulife Securities was renamed Manulife Wealth (branding change, not a departure).')), 512)
 WHERE id = 1502;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1502, x.name, x.role FROM (
@@ -61,7 +61,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1502)
 -- 1736 Craig Emptage, ScotiaMcLeod (Pillar Advisory Group), London, ON (role change, applied + flagged)
 UPDATE contacts SET
   address = '255 Queens Avenue, Suite 1700',
-  data_flags = TRIM(CONCAT(data_flags, ' | ROLE CHANGE: effective July 1, 2026 stepped out of client-facing advisory into a ScotiaMcLeod Branch Administrator / Assistant Branch Manager role; team rebranded from "The Emptage Financial Group" to "Pillar Advisory Group" with Yousef Nassereddine as advisory lead — may no longer be a prospect, verify.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ROLE CHANGE: effective July 1, 2026 stepped out of client-facing advisory into a ScotiaMcLeod Branch Administrator / Assistant Branch Manager role; team rebranded from "The Emptage Financial Group" to "Pillar Advisory Group" with Yousef Nassereddine as advisory lead — may no longer be a prospect, verify.')), 512)
 WHERE id = 1736;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1736, x.name, x.role FROM (
@@ -83,7 +83,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1423)
 -- 1671 Kevin Dunphy, IPC (Dunphy-Molloy & Associates), St. John's, NL
 UPDATE contacts SET
   address = '556 Topsail Road, Suite 100',
-  data_flags = TRIM(CONCAT(data_flags, ' | Dealer is IPC Investment Corporation, not "IPC Securities" as recorded; practice is Dunphy-Molloy & Associates (he is President). Former 90 Barters Hill address is outdated.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Dealer is IPC Investment Corporation, not "IPC Securities" as recorded; practice is Dunphy-Molloy & Associates (he is President). Former 90 Barters Hill address is outdated.')), 512)
 WHERE id = 1671;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1671, x.name, x.role FROM (
@@ -97,7 +97,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1671)
 -- 1359 Susan O'Brien, Richardson Wealth (The Susan O'Brien Group), Calgary, AB (weak signal, applied + flagged)
 UPDATE contacts SET
   address = '525 8th Avenue SW, Suite 4700 (Eighth Avenue Place)',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: a live BMO Nesbitt Burns microsite ("The Susan O''Brien Group Wealth Advisory of BMO Nesbitt Burns", Suite 1100 same tower) lists her same team, suggesting a possible post-iA-acquisition return to BMO (she was at BMO 1998-2021). No dated announcement found — verify employer before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: a live BMO Nesbitt Burns microsite ("The Susan O''Brien Group Wealth Advisory of BMO Nesbitt Burns", Suite 1100 same tower) lists her same team, suggesting a possible post-iA-acquisition return to BMO (she was at BMO 1998-2021). No dated announcement found — verify employer before outreach.')), 512)
 WHERE id = 1359;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1359, x.name, x.role FROM (
@@ -121,7 +121,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1322)
 -- 1452 Kathy Sager, CG Wealth Management (Sager Financial Group), Vancouver, BC
 UPDATE contacts SET
   address = '1133 Melville St., Suite 1200',
-  data_flags = TRIM(CONCAT(data_flags, ' | Former joint team "Sager Lecky Peters Wealth Management" split — Patrick Lecky and Brian Peters now run a separate Lecky Peters Advisory Group at 609 Granville St.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Former joint team "Sager Lecky Peters Wealth Management" split — Patrick Lecky and Brian Peters now run a separate Lecky Peters Advisory Group at 609 Granville St.')), 512)
 WHERE id = 1452;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1452, x.name, x.role FROM (
@@ -163,7 +163,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1650)
 -- 1356 Brad Hunter, Richardson Wealth (The Hunter Team), Calgary, AB (weak signal on team member, flagged)
 UPDATE contacts SET
   address = 'Suite 4700, 525 8th Avenue SW (Eighth Avenue Place)',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: team member Chris Ward may have departed to CG Wealth (Wyder Wealth Partners, Calgary) — unverified; Brad himself shows no post-iA move.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: team member Chris Ward may have departed to CG Wealth (Wyder Wealth Partners, Calgary) — unverified; Brad himself shows no post-iA move.')), 512)
 WHERE id = 1356;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1356, x.name, x.role FROM (
@@ -195,7 +195,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1380)
 -- 1746 Rene Welz, ScotiaMcLeod (Welz Kehr Group / Welz Kehr Marano Group), Edmonton, AB
 UPDATE contacts SET
   address = 'Suite 2100, 10220 103 Avenue NW (Stantec Tower)',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team renamed "Welz Kehr Marano Group" in directories (Donni Marano elevated) — a rebrand, not a departure.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team renamed "Welz Kehr Marano Group" in directories (Donni Marano elevated) — a rebrand, not a departure.')), 512)
 WHERE id = 1746;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1746, x.name, x.role FROM (
@@ -219,7 +219,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1298)
 -- 1253 Paul Shipton, Wellington-Altus (Oram Financial, ex Shipton Duric & Associates), Gibsons, BC
 UPDATE contacts SET
   address = 'Suite 202 - 938 Gibsons Way',
-  data_flags = TRIM(CONCAT(data_flags, ' | Same team as 1270 Omar Duric — co-founded "Shipton Duric & Associates," rebranded "Oram Financial," spanning Gibsons and White Rock; identical AUM is one shared book, not a data error.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Same team as 1270 Omar Duric — co-founded "Shipton Duric & Associates," rebranded "Oram Financial," spanning Gibsons and White Rock; identical AUM is one shared book, not a data error.')), 512)
 WHERE id = 1253;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1253, x.name, x.role FROM (
@@ -231,7 +231,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1253)
 -- 1270 Omar Duric, Wellington-Altus (Oram Financial, ex Shipton Duric & Associates), White Rock, BC
 UPDATE contacts SET
   address = '34 White Rock Square, 1480 Foster Street',
-  data_flags = TRIM(CONCAT(data_flags, ' | Same team as 1253 Paul Shipton — co-founded "Shipton Duric & Associates," rebranded "Oram Financial," spanning Gibsons and White Rock; identical AUM is one shared book, not a data error.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Same team as 1253 Paul Shipton — co-founded "Shipton Duric & Associates," rebranded "Oram Financial," spanning Gibsons and White Rock; identical AUM is one shared book, not a data error.')), 512)
 WHERE id = 1270;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1270, x.name, x.role FROM (

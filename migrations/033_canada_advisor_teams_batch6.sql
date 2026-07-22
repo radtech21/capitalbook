@@ -38,7 +38,7 @@
 -- 1313 Peter Pomponio, Assante Wealth Management (Assante Dorval), Dorval, QC
 UPDATE contacts SET
   address = '2020 Trans-Canada Highway, Suite 200',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: LinkedIn/RocketReach suggest possible move to Nextt Family Office (Managing Partner) — other sources still show him as President/Owner Assante Dorval; needs manual verification.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: LinkedIn/RocketReach suggest possible move to Nextt Family Office (Managing Partner) — other sources still show him as President/Owner Assante Dorval; needs manual verification.')), 512)
 WHERE id = 1313;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1313, x.name, x.role FROM (

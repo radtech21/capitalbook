@@ -62,7 +62,7 @@ UPDATE contacts SET address = '1567 Niagara Stone Rd' WHERE id = 1410;
 UPDATE contacts SET
   firm = 'Saltwinds Financial',
   address = '1361 Bedford Hwy',
-  data_flags = TRIM(CONCAT(data_flags, ' | Left CI Assante Wealth Management for Saltwinds Financial, an independent boutique, as President/Co-Principal — old Assante team page no longer lists him.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Left CI Assante Wealth Management for Saltwinds Financial, an independent boutique, as President/Co-Principal — old Assante team page no longer lists him.')), 512)
 WHERE id = 1319;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1319, x.name, x.role FROM (
@@ -79,8 +79,8 @@ UPDATE contacts SET
   firm = 'Richardson Wealth',
   title = 'Senior Wealth Advisor',
   address = '606 Spadina Crescent East, Suite 1200',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Moved practice (with Paul Bourgeault, now "Khorshid Bourgeault Wealth Partners") from IG Private Wealth to Richardson Wealth, ~Sept/Oct 2025 — confirmed via Richardson Wealth''s own welcome post and Investment Executive coverage.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Moved practice (with Paul Bourgeault, now "Khorshid Bourgeault Wealth Partners") from IG Private Wealth to Richardson Wealth, ~Sept/Oct 2025 — confirmed via Richardson Wealth''s own welcome post and Investment Executive coverage.')), 512)
 WHERE id = 1299;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1299, x.name, x.role FROM (
@@ -143,7 +143,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1435)
 -- 1608 Chris James, CIBC Wood Gundy (James Financial Advisory Group), Fredericton, NB
 UPDATE contacts SET
   address = '77 Westmorland Street, Suite 770',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team rebranded from "Hicks James Advisory Group" to "James Financial Advisory Group" — former partner Tim Hicks no longer on roster; does not affect Chris James''s own status.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team rebranded from "Hicks James Advisory Group" to "James Financial Advisory Group" — former partner Tim Hicks no longer on roster; does not affect Chris James''s own status.')), 512)
 WHERE id = 1608;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1608, x.name, x.role FROM (
@@ -185,7 +185,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1770)
 -- 1268 Darryl Tatomir, Wellington-Altus Private Wealth (Bergh Tatomir & Associates), Calgary, AB
 UPDATE contacts SET
   address = 'Suite 301, 322 11 Ave SW',
-  data_flags = TRIM(CONCAT(data_flags, ' | Original practice co-founder Bradley Bergh died in 2018 — historical, does not affect Tatomir''s current active status.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Original practice co-founder Bradley Bergh died in 2018 — historical, does not affect Tatomir''s current active status.')), 512)
 WHERE id = 1268;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1268, x.name, x.role FROM (
@@ -209,7 +209,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1400)
 -- 1256 Kelly Lindsey, Raymond James (Okanagan Wealth Management Group), Penticton, BC
 UPDATE contacts SET
   address = '465 Ellis Street',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team renamed from "Bate Lindsey Rutherford Wealth Management Group" to "Okanagan Wealth Management Group" — not a departure.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team renamed from "Bate Lindsey Rutherford Wealth Management Group" to "Okanagan Wealth Management Group" — not a departure.')), 512)
 WHERE id = 1256;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1256, x.name, x.role FROM (
@@ -224,8 +224,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1256)
 UPDATE contacts SET
   firm = 'iA Private Wealth',
   address = '100-1900 11 Street SE (Eighth Avenue Place)',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'LIKELY MOVED dealer affiliation from Raymond James to iA Private Wealth — team renamed "OP Elite Integrated Wealth" to "OP Elite Wealth," now branded iA Private Wealth on its own site; Alberta corporate registry confirms same office building. A second, possibly-stale entity ("Pinder Wealth Management"/"Pinder Mastel Wealth Management") still references Raymond James and a Tate Pinder — unresolved ambiguity, verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'LIKELY MOVED dealer affiliation from Raymond James to iA Private Wealth — team renamed "OP Elite Integrated Wealth" to "OP Elite Wealth," now branded iA Private Wealth on its own site; Alberta corporate registry confirms same office building. A second, possibly-stale entity ("Pinder Wealth Management"/"Pinder Mastel Wealth Management") still references Raymond James and a Tate Pinder — unresolved ambiguity, verify before outreach.')), 512)
 WHERE id = 1697;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1697, x.name, x.role FROM (

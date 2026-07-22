@@ -1,19 +1,27 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { q, one, run } from '../db.js';
-import { requireAuth, requireRole } from '../auth.js';
+import { requireAuth, requireRole, orgScope } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { contactInOrg } from './contacts.js';
 
 export const tagsRouter = Router();
 
 const tagSchema = z.object({ name: z.string().min(1).max(60), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() });
 
-// GET /api/tags -> all tags with how many contacts carry each
-tagsRouter.get('/tags', requireAuth, async (_req, res) => {
+// GET /api/tags -> all tags (label definitions are shared/global) with how
+// many contacts IN THE CALLER'S OWN ORG carry each, so a client org can't see
+// usage counts against Capital Book's book (or vice versa).
+tagsRouter.get('/tags', requireAuth, async (req, res) => {
+  const org = orgScope(req, 'c.org_id');
+  const countJoin = org.sql
+    ? `LEFT JOIN contact_tags ct ON ct.tag_id = t.id AND EXISTS (SELECT 1 FROM contacts c WHERE c.id = ct.contact_id AND ${org.sql})`
+    : `LEFT JOIN contact_tags ct ON ct.tag_id = t.id`;
   const rows = await q(
     `SELECT t.id, t.name, t.color, COUNT(ct.contact_id) AS count
-     FROM tags t LEFT JOIN contact_tags ct ON ct.tag_id = t.id
-     GROUP BY t.id ORDER BY t.name`
+     FROM tags t ${countJoin}
+     GROUP BY t.id ORDER BY t.name`,
+    org.params
   );
   return res.json({ tags: rows });
 });
@@ -41,14 +49,16 @@ tagsRouter.delete('/tags/:id', requireAuth, requireRole('admin'), async (req, re
 
 // GET /api/contacts/:id/tags
 tagsRouter.get('/contacts/:id/tags', requireAuth, async (req, res) => {
-  const rows = await q('SELECT t.id, t.name, t.color FROM tags t JOIN contact_tags ct ON ct.tag_id = t.id WHERE ct.contact_id = ? ORDER BY t.name', [Number(req.params.id)]);
+  const contactId = Number(req.params.id);
+  if (!(await contactInOrg(req, contactId))) return res.status(404).json({ error: 'Contact not found' });
+  const rows = await q('SELECT t.id, t.name, t.color FROM tags t JOIN contact_tags ct ON ct.tag_id = t.id WHERE ct.contact_id = ? ORDER BY t.name', [contactId]);
   return res.json({ tags: rows });
 });
 
 // POST /api/contacts/:id/tags -> attach by {tagId} or {name} (created if new). editor or admin
 tagsRouter.post('/contacts/:id/tags', requireAuth, requireRole('editor'), async (req, res) => {
   const contactId = Number(req.params.id);
-  if (!(await one('SELECT id FROM contacts WHERE id = ?', [contactId]))) return res.status(404).json({ error: 'Contact not found' });
+  if (!(await contactInOrg(req, contactId))) return res.status(404).json({ error: 'Contact not found' });
   let tagId = req.body?.tagId ? Number(req.body.tagId) : 0;
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   if (!tagId && name) {
@@ -67,6 +77,7 @@ tagsRouter.post('/contacts/:id/tags', requireAuth, requireRole('editor'), async 
 tagsRouter.delete('/contacts/:id/tags/:tagId', requireAuth, requireRole('editor'), async (req, res) => {
   const contactId = Number(req.params.id);
   const tagId = Number(req.params.tagId);
+  if (!(await contactInOrg(req, contactId))) return res.status(404).json({ error: 'Contact not found' });
   await run('DELETE FROM contact_tags WHERE contact_id = ? AND tag_id = ?', [contactId, tagId]);
   await writeAudit(req.user, 'tag_detach', 'contact', contactId, { tagId });
   return res.json({ ok: true });

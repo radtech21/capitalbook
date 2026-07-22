@@ -37,32 +37,32 @@ WHERE id IN (1477, 1479, 1480, 1481, 1482, 1483, 1484, 1485, 1486, 1487, 1488, 1
 
 UPDATE contacts
 SET reachable = 0,
-    data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
+    data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
       CASE WHEN COALESCE(data_flags, '') = '' THEN '' ELSE ' | ' END,
-      'DECEASED (ALS, April 2023, per ScotiaMcLeod Charitable Foundation + firm Staff Update post). Book now led by Andrew McGoey, The McGoey Financial Group, same address — needs human decision: archive this contact and/or add Andrew McGoey as a new contact.'))
+      'DECEASED (ALS, April 2023, per ScotiaMcLeod Charitable Foundation + firm Staff Update post). Book now led by Andrew McGoey, The McGoey Financial Group, same address — needs human decision: archive this contact and/or add Andrew McGoey as a new contact.')), 512)
 WHERE id = 1760
   AND data_flags NOT LIKE '%DECEASED%';
 
 UPDATE contacts
-SET data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
-  ' | Research note: real, active philanthropic-advisory firm (est. 1997, founder William "Bill" Petruck) — CRM "Financial Advisor" segment tag likely a miscategorization, but entity/contact are genuine.'))
+SET data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
+  ' | Research note: real, active philanthropic-advisory firm (est. 1997, founder William "Bill" Petruck) — CRM "Financial Advisor" segment tag likely a miscategorization, but entity/contact are genuine.')), 512)
 WHERE id = 1497
   AND data_flags NOT LIKE '%Research note%';
 
 UPDATE contacts
-SET data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
-  ' | Research note: real, active independent multi-family office (~$800M+ AUM, founded 2018) with a confirmed 3-person leadership team — original "generic inbox" flag appears mismatched to this entity.'))
+SET data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
+  ' | Research note: real, active independent multi-family office (~$800M+ AUM, founded 2018) with a confirmed 3-person leadership team — original "generic inbox" flag appears mismatched to this entity.')), 512)
 WHERE id = 1573
   AND data_flags NOT LIKE '%Research note%';
 
 UPDATE contacts
-SET data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
-  ' | Research note: real named individual, but an Advisory Board member (former Tim Hortons Chief Brand/Marketing Officer, retired ~2014), not an active staff financial advisor — CRM "Financial Advisor" tag likely doesn''t fit his actual role.'))
+SET data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
+  ' | Research note: real named individual, but an Advisory Board member (former Tim Hortons Chief Brand/Marketing Officer, retired ~2014), not an active staff financial advisor — CRM "Financial Advisor" tag likely doesn''t fit his actual role.')), 512)
 WHERE id = 1666
   AND data_flags NOT LIKE '%Research note%';
 
 UPDATE contacts
-SET data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
-  ' | Research note: real, active firm and team confirmed independently — original "generic inbox" flag appears mismatched to this entity.'))
+SET data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
+  ' | Research note: real, active firm and team confirmed independently — original "generic inbox" flag appears mismatched to this entity.')), 512)
 WHERE id = 1342
   AND data_flags NOT LIKE '%Research note%';

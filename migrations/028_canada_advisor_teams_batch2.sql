@@ -99,9 +99,9 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1373)
 -- Management), Calgary — see compliance note above
 UPDATE contacts SET address = 'Eighth Avenue Place, 525 8th Avenue SW, Suite 4700' WHERE id = 1396;
 UPDATE contacts
-SET data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
+SET data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
   CASE WHEN COALESCE(data_flags, '') = '' THEN '' ELSE ' | ' END,
-  'Compliance note: 2015 IIROC settlement — admitted to using discretionary trading authority without proper disclosure/consent for 7 managed accounts at predecessor firm Mackie Research Capital.'))
+  'Compliance note: 2015 IIROC settlement — admitted to using discretionary trading authority without proper disclosure/consent for 7 managed accounts at predecessor firm Mackie Research Capital.')), 512)
 WHERE id = 1396
   AND data_flags NOT LIKE '%Compliance note%';
 

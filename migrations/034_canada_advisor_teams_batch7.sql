@@ -45,7 +45,7 @@ UPDATE contacts SET address = 'Suite 500, 1508 West Broadway' WHERE id = 1681;
 -- 1227 Michael Anderssen, TD Wealth Private Investment Advice, Bridgewater, NS
 UPDATE contacts SET
   address = '135 North Street',
-  data_flags = TRIM(CONCAT(data_flags, ' | AMBIGUOUS: bio phrase "completed a 39-year journey in banking and wealth management" could indicate retirement — profile/LinkedIn still list him as active; needs manual verification.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | AMBIGUOUS: bio phrase "completed a 39-year journey in banking and wealth management" could indicate retirement — profile/LinkedIn still list him as active; needs manual verification.')), 512)
 WHERE id = 1227;
 
 -- 1729 Kristofer Jensen, ScotiaMcLeod, Edmonton, AB (team only — address NOT_FOUND, conflicting snippets)
@@ -86,7 +86,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1778)
 UPDATE contacts SET
   firm = 'Scotia Wealth Management (ScotiaMcLeod)',
   address = 'Suite 1133 - 4720 Kingsway',
-  data_flags = TRIM(CONCAT(data_flags, ' | Left Raymond James for Scotia Wealth Management (ScotiaMcLeod), same Burnaby building, ~April 2026 — "Muir Investment Team." Firm field updated accordingly.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Left Raymond James for Scotia Wealth Management (ScotiaMcLeod), same Burnaby building, ~April 2026 — "Muir Investment Team." Firm field updated accordingly.')), 512)
 WHERE id = 1711;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1711, x.name, x.role FROM (
@@ -174,7 +174,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1360)
 UPDATE contacts SET
   firm = 'Richardson Wealth',
   address = '1959 Upper Water Street, Purdy''s Wharf Tower I, Suite #1800',
-  data_flags = TRIM(CONCAT(data_flags, ' | Left TD Wealth for Richardson Wealth, Halifax, May 2024 (whole team moved) — rebranded "Mary Ellen Byrne Wealth Management." Firm field updated accordingly.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Left TD Wealth for Richardson Wealth, Halifax, May 2024 (whole team moved) — rebranded "Mary Ellen Byrne Wealth Management." Firm field updated accordingly.')), 512)
 WHERE id = 1228;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1228, x.name, x.role FROM (

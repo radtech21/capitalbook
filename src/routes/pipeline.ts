@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { q, one, run } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { contactInOrg } from './contacts.js';
 
 export const pipelineRouter = Router();
 
@@ -29,7 +30,7 @@ pipelineRouter.get('/', requireAuth, async (req, res) => {
 // PUT /api/pipeline/:contactId -> upsert (editor or admin only)
 pipelineRouter.put('/:contactId', requireAuth, requireRole('editor'), async (req, res) => {
   const contactId = Number(req.params.contactId);
-  if (!(await one('SELECT id FROM contacts WHERE id = ?', [contactId]))) return res.status(404).json({ error: 'Contact not found' });
+  if (!(await contactInOrg(req, contactId))) return res.status(404).json({ error: 'Contact not found' });
 
   const parsed = pipeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });

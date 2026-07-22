@@ -46,8 +46,8 @@
 UPDATE contacts SET
   firm = 'Sun Life',
   address = '1230, 1122 4th Street SW',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'LIKELY MOVED from IPC Securities to Sun Life (per a single My Business Magazine profile, joined Jan 6 2025) — possibly a wholesaler/advisor-support role rather than direct client-facing advisor; could not independently corroborate, verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'LIKELY MOVED from IPC Securities to Sun Life (per a single My Business Magazine profile, joined Jan 6 2025) — possibly a wholesaler/advisor-support role rather than direct client-facing advisor; could not independently corroborate, verify before outreach.')), 512)
 WHERE id = 1661;
 
 -- 1283 Marc Sabourin, Harbourfront Wealth Management (Trans Canada Wealth Management), Winnipeg, MB
@@ -87,7 +87,7 @@ UPDATE contacts SET
   firm = 'Raymond James Ltd',
   title = 'Senior Wealth Advisor & Portfolio Manager',
   address = '15178 Buena Vista Ave',
-  data_flags = TRIM(CONCAT(data_flags, ' | Moved from Manulife Securities to Raymond James Ltd., now practicing as "Alexander Wealth & Associates Advisory Group" — confirmed via LinkedIn and multiple sources.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Moved from Manulife Securities to Raymond James Ltd., now practicing as "Alexander Wealth & Associates Advisory Group" — confirmed via LinkedIn and multiple sources.')), 512)
 WHERE id = 1477;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1477, x.name, x.role FROM (
@@ -100,7 +100,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1477)
 UPDATE contacts SET
   firm = 'PEAK Securities Inc',
   address = '9523 Main St, Suite 102',
-  data_flags = TRIM(CONCAT(data_flags, ' | Moved from Manulife Securities to PEAK Securities Inc. — firm''s own site now branded "Holistic Wealth - PEAK Securities," same office/phone/email.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Moved from Manulife Securities to PEAK Securities Inc. — firm''s own site now branded "Holistic Wealth - PEAK Securities," same office/phone/email.')), 512)
 WHERE id = 1482;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1482, x.name, x.role FROM (
@@ -145,7 +145,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1308)
 
 -- 1444 Conal Campbell, CG Wealth Management, Vancouver, BC (unverifiable, flag only)
 UPDATE contacts SET
-  data_flags = TRIM(CONCAT(data_flags, ' | Could not verify: no public record found tying this name to CG Wealth Management/Canaccord Genuity or any financial-advisory role in Vancouver; web search budget exhausted mid-research.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Could not verify: no public record found tying this name to CG Wealth Management/Canaccord Genuity or any financial-advisory role in Vancouver; web search budget exhausted mid-research.')), 512)
 WHERE id = 1444;
 
 -- 1499 Kyle Harris, Manulife Wealth Inc (Harris Wealth Management), Chilliwack, BC
@@ -162,25 +162,25 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1499)
 -- 1530 Kalee Boisvert, Raymond James Ltd, Calgary, AB (address only, low confidence)
 UPDATE contacts SET
   address = '101 6 St SW Suite 110A',
-  data_flags = TRIM(CONCAT(data_flags, ' | Address has an unconfirmed alternate from a stale 2020 profile; treat with caution.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Address has an unconfirmed alternate from a stale 2020 profile; treat with caution.')), 512)
 WHERE id = 1530;
 
 -- 1576 Trevor Zacher, CIBC Wood Gundy (possibly Calgary Central Advisory Group), Calgary, AB
 UPDATE contacts SET
   address = '500 Centre Street SE, 27th Floor',
-  data_flags = TRIM(CONCAT(data_flags, ' | Same building as 1577 Sean Gaffney and 1578 Saqeeb Rahman, who are both referenced under "Calgary Central Advisory Group" — his own team-name affiliation is unconfirmed, flagged as a suspected but unverified shared team.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Same building as 1577 Sean Gaffney and 1578 Saqeeb Rahman, who are both referenced under "Calgary Central Advisory Group" — his own team-name affiliation is unconfirmed, flagged as a suspected but unverified shared team.')), 512)
 WHERE id = 1576;
 
 -- 1577 Sean Gaffney, CIBC Wood Gundy (Calgary Central Advisory Group), Calgary, AB
 UPDATE contacts SET
   address = '500 Centre Street SE, 27th Floor',
-  data_flags = TRIM(CONCAT(data_flags, ' | Referenced under the same "Calgary Central Advisory Group" name as 1578 Saqeeb Rahman — suspected shared team, not cross-confirmed; roster not merged.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Referenced under the same "Calgary Central Advisory Group" name as 1578 Saqeeb Rahman — suspected shared team, not cross-confirmed; roster not merged.')), 512)
 WHERE id = 1577;
 
 -- 1578 Saqeeb Rahman, CIBC Wood Gundy (Calgary Central Advisory Group), Calgary, AB
 UPDATE contacts SET
   address = '500 Centre Street SE, 27th Floor',
-  data_flags = TRIM(CONCAT(data_flags, ' | Referenced under the same "Calgary Central Advisory Group" name as 1577 Sean Gaffney — suspected shared team, not cross-confirmed; roster not merged.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Referenced under the same "Calgary Central Advisory Group" name as 1577 Sean Gaffney — suspected shared team, not cross-confirmed; roster not merged.')), 512)
 WHERE id = 1578;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1578, x.name, x.role FROM (
@@ -193,10 +193,10 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1578)
 
 -- 1458 Rod Bruchet, CG Wealth Management, Vancouver, BC (unverifiable, flag only)
 UPDATE contacts SET
-  data_flags = TRIM(CONCAT(data_flags, ' | Could not verify: no CG Wealth Management bio, LinkedIn, or CIRO record found; web search budget exhausted mid-research (hard 200/200 cutoff).'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Could not verify: no CG Wealth Management bio, LinkedIn, or CIRO record found; web search budget exhausted mid-research (hard 200/200 cutoff).')), 512)
 WHERE id = 1458;
 
 -- 1465 Alan Johnson, CG Wealth Management, Vancouver, BC (unverifiable, flag only)
 UPDATE contacts SET
-  data_flags = TRIM(CONCAT(data_flags, ' | Could not verify: not found on current CG Wealth Management/Canaccord Genuity Vancouver roster. An unconfirmed same-named obituary (West Vancouver, Feb 2025) surfaced but profession was not stated, so it is NOT treated as a confirmed death. Web search budget exhausted mid-research.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Could not verify: not found on current CG Wealth Management/Canaccord Genuity Vancouver roster. An unconfirmed same-named obituary (West Vancouver, Feb 2025) surfaced but profession was not stated, so it is NOT treated as a confirmed death. Web search budget exhausted mid-research.')), 512)
 WHERE id = 1465;

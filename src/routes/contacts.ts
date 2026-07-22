@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { q, one, run, tx } from '../db.js';
-import { requireAuth, requireRole, requireSuperAdmin } from '../auth.js';
+import { requireAuth, requireRole, requireSuperAdmin, orgScope } from '../auth.js';
 import { writeAudit } from '../audit.js';
 
 export const contactsRouter = Router();
@@ -73,6 +73,8 @@ function buildFilter(req: any): { whereSql: string; params: unknown[] } {
     else if (o === 'me') { where.push('c.owner_id = ?'); params.push(req.user!.uid); }
     else { where.push('c.owner_id = ?'); params.push(Number(o)); }
   }
+  const org = orgScope(req);
+  if (org.sql) { where.push(org.sql); params.push(...org.params); }
   return { whereSql: where.length ? 'WHERE ' + where.join(' AND ') : '', params };
 }
 
@@ -137,8 +139,13 @@ contactsRouter.get('/', requireAuth, async (req, res) => {
 
 // distinct filter option values
 contactsRouter.get('/meta', requireAuth, async (req, res) => {
+  // Filter option lists only ever offer values that exist within the caller's
+  // own org (platform org sees everything, unchanged from before multi-org).
+  const org = orgScope(req, 'org_id');
+  const orgAnd = org.sql ? ` AND ${org.sql}` : '';
+
   const distinct = async (col: string) =>
-    (await q<{ v: string }>(`SELECT DISTINCT ${col} AS v FROM contacts WHERE ${col} <> '' ORDER BY v`)).map((r) => r.v);
+    (await q<{ v: string }>(`SELECT DISTINCT ${col} AS v FROM contacts WHERE ${col} <> ''${orgAnd} ORDER BY v`, org.params)).map((r) => r.v);
 
   // Geography narrows in three steps: country -> province/state -> city. There
   // are 54 US states and 550 cities across the book, so each list is scoped to
@@ -150,15 +157,16 @@ contactsRouter.get('/meta', requireAuth, async (req, res) => {
 
   const states = await q<{ v: string; n: number }>(
     `SELECT state AS v, COUNT(*) AS n FROM contacts
-      WHERE state <> ''${countryClause ? ' AND ' + countryClause.sql : ''}
+      WHERE state <> ''${countryClause ? ' AND ' + countryClause.sql : ''}${orgAnd}
       GROUP BY state ORDER BY n DESC, v ASC`,
-    countryClause ? countryClause.params : []
+    [...(countryClause ? countryClause.params : []), ...org.params]
   );
 
   const cityWhere: string[] = ["city <> ''"];
   const cityParams: unknown[] = [];
   if (countryClause) { cityWhere.push(countryClause.sql); cityParams.push(...countryClause.params); }
   if (stateSel) { cityWhere.push('state = ?'); cityParams.push(stateSel); }
+  if (org.sql) { cityWhere.push(org.sql); cityParams.push(...org.params); }
   const cities = await q<{ v: string; n: number }>(
     `SELECT city AS v, COUNT(*) AS n FROM contacts
       WHERE ${cityWhere.join(' AND ')}
@@ -172,10 +180,10 @@ contactsRouter.get('/meta', requireAuth, async (req, res) => {
     // firm_type has a long tail (89 distinct values); biggest first puts the
     // eight that matter at the top of the dropdown instead of alphabetical noise
     firmTypes: (await q<{ v: string }>(
-      "SELECT firm_type AS v FROM contacts WHERE firm_type <> '' GROUP BY firm_type ORDER BY COUNT(*) DESC, v ASC"
+      `SELECT firm_type AS v FROM contacts WHERE firm_type <> ''${orgAnd} GROUP BY firm_type ORDER BY COUNT(*) DESC, v ASC`, org.params
     )).map((r) => r.v),
     emailStatuses: (await q<{ v: string }>(
-      "SELECT email_status AS v FROM contacts WHERE email_status <> '' GROUP BY email_status ORDER BY COUNT(*) DESC, v ASC"
+      `SELECT email_status AS v FROM contacts WHERE email_status <> ''${orgAnd} GROUP BY email_status ORDER BY COUNT(*) DESC, v ASC`, org.params
     )).map((r) => r.v),
     states: states.map((r) => ({ name: r.v, count: Number(r.n) })),
     cities: cities.map((r) => ({ name: r.v, count: Number(r.n) })),
@@ -209,6 +217,15 @@ contactsRouter.get('/export.csv', requireAuth, async (req, res) => {
   return res.send(lines.join('\n'));
 });
 
+// Shared by this file and other route files (pipeline/tasks/activities/tags/
+// templates) that reference a contact_id and must confirm it belongs to the
+// caller's own org before reading/writing against it. Platform org bypasses
+// the check, matching the app's single-tenant behavior before multi-org.
+export async function contactInOrg(req: any, id: number): Promise<boolean> {
+  if (req.user!.isPlatformOrg) return !!(await one('SELECT id FROM contacts WHERE id = ?', [id]));
+  return !!(await one('SELECT id FROM contacts WHERE id = ? AND org_id = ?', [id, req.user!.orgId]));
+}
+
 // POST /api/contacts -> create (admin)
 const createSchema = z.object({
   name: z.string().min(1).max(300),
@@ -224,8 +241,10 @@ contactsRouter.post('/', requireAuth, requireRole('editor'), async (req, res) =>
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
   const next = Number((await one<{ n: number }>('SELECT COALESCE(MAX(id),0)+1 AS n FROM contacts'))!.n);
   const body = req.body as Record<string, unknown>;
-  const cols = ['id', ...WRITABLE];
-  const vals = cols.map((c) => (c === 'id' ? next : body[c] ?? defaultFor(c)));
+  // A contact you create always lands in your own org, including for platform
+  // users (whose org_id is the platform org).
+  const cols = ['id', 'org_id', ...WRITABLE];
+  const vals = cols.map((c) => (c === 'id' ? next : c === 'org_id' ? req.user!.orgId : body[c] ?? defaultFor(c)));
   await run(`INSERT INTO contacts (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`, vals);
   await writeAudit(req.user, 'contact_create', 'contact', next, { name: body.name });
   return res.status(201).json({ contact: await one('SELECT * FROM contacts WHERE id = ?', [next]) });
@@ -234,8 +253,7 @@ contactsRouter.post('/', requireAuth, requireRole('editor'), async (req, res) =>
 // PATCH /api/contacts/:id -> edit selected fields (editor or admin)
 contactsRouter.patch('/:id', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
-  const existing = await one('SELECT id FROM contacts WHERE id = ?', [id]);
-  if (!existing) return res.status(404).json({ error: 'Contact not found' });
+  if (!(await contactInOrg(req, id))) return res.status(404).json({ error: 'Contact not found' });
   const body = req.body as Record<string, unknown>;
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -249,7 +267,10 @@ contactsRouter.patch('/:id', requireAuth, requireRole('editor'), async (req, res
   return res.json({ contact: await one('SELECT * FROM contacts WHERE id = ?', [id]) });
 });
 
-// POST /api/contacts/import -> bulk upsert (super admin only). Body: { contacts: [...] } or { csv: "..." }
+// POST /api/contacts/import -> bulk upsert (super admin only). Body: { contacts: [...] } or { csv: "..." },
+// plus an optional top-level orgId (defaults to the platform org, 1) so a
+// future list (e.g. a client org's own contact set) can be imported straight
+// into that org instead of Capital Book's.
 contactsRouter.post('/import', requireAuth, requireSuperAdmin, async (req, res) => {
   let arr: unknown;
   if (req.body && typeof req.body.csv === 'string') {
@@ -259,13 +280,18 @@ contactsRouter.post('/import', requireAuth, requireSuperAdmin, async (req, res) 
     arr = (req.body && (req.body.contacts || req.body)) as unknown;
   }
   if (!Array.isArray(arr)) return res.status(400).json({ error: 'Body must be { contacts: [...] }, { csv: "..." }, or an array' });
+  const orgId = req.body?.orgId != null ? Number(req.body.orgId) : 1;
+  if (!(await one('SELECT id FROM organizations WHERE id = ?', [orgId]))) return res.status(404).json({ error: 'Organization not found' });
 
   // Rows are matched to existing contacts by EMAIL, not just by id. An advisor
   // list from any outside source has no id column, so matching on id alone would
   // mint a fresh id for every row and duplicate the entire book on the first
-  // refresh. Email is the only stable key such a list actually carries.
+  // refresh. Email is the only stable key such a list actually carries. Matching
+  // is scoped to the target org, so importing into a client org can never
+  // silently overwrite a same-email contact that belongs to a different org.
   const emailRows = await q<{ e: string; i: number }>(
-    "SELECT LOWER(email) AS e, MIN(id) AS i FROM contacts WHERE email IS NOT NULL AND email <> '' GROUP BY LOWER(email)"
+    "SELECT LOWER(email) AS e, MIN(id) AS i FROM contacts WHERE email IS NOT NULL AND email <> '' AND org_id = ? GROUP BY LOWER(email)",
+    [orgId]
   );
   const byEmail = new Map(emailRows.map((r) => [r.e, Number(r.i)]));
 
@@ -289,9 +315,9 @@ contactsRouter.post('/import', requireAuth, requireSuperAdmin, async (req, res) 
         // name, email, firm) must never blank a phone number, city, or AUM that
         // is already on file. New rows get sensible defaults for the rest.
         const present = WRITABLE.filter((c) => c in rec);
-        const insertCols = isNew ? ['id', ...WRITABLE] : ['id', ...present];
+        const insertCols = isNew ? ['id', 'org_id', ...WRITABLE] : ['id', ...present];
         const insertVals = insertCols.map((c) =>
-          c === 'id' ? id : c in rec ? coerce(c, rec[c]) : defaultFor(c)
+          c === 'id' ? id : c === 'org_id' ? orgId : c in rec ? coerce(c, rec[c]) : defaultFor(c)
         );
         const updateCols = present.length ? present : ['name'];
         const sql =
@@ -304,28 +330,40 @@ contactsRouter.post('/import', requireAuth, requireSuperAdmin, async (req, res) 
   } catch (e) {
     return res.status(400).json({ error: 'Import failed', detail: String(e) });
   }
-  await writeAudit(req.user, 'import_contacts', 'contacts', imported, { created, updated });
-  const total = Number((await one<{ n: number }>('SELECT COUNT(*) AS n FROM contacts'))!.n);
+  await writeAudit(req.user, 'import_contacts', 'contacts', imported, { created, updated, orgId });
+  const total = Number((await one<{ n: number }>('SELECT COUNT(*) AS n FROM contacts WHERE org_id = ?', [orgId]))!.n);
   return res.json({ imported, created, updated, total });
 });
 
 // POST /api/contacts/bulk -> apply one action to many contacts (editor or admin)
 const bulkSchema = z.object({
   ids: z.array(z.number().int()).min(1).max(2000),
-  action: z.enum(['pipeline', 'tag', 'untag', 'task', 'assign']),
+  action: z.enum(['pipeline', 'tag', 'untag', 'task', 'assign', 'assign_org']),
   status: z.string().max(40).optional(),
   due: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   tagId: z.number().int().optional(),
   name: z.string().max(60).optional(),
   title: z.string().max(300).optional(),
   ownerId: z.number().int().nullable().optional(),
+  orgId: z.number().int().optional(),
 });
 contactsRouter.post('/bulk', requireAuth, requireRole('editor'), async (req, res) => {
   const parsed = bulkSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
   const { action } = parsed.data;
+  // assign_org moves contacts BETWEEN orgs, so it is platform-admin only and
+  // deliberately sees across every org — every other action stays scoped to
+  // contacts the caller can already see.
+  if (action === 'assign_org' && !(req.user!.role === 'admin' && req.user!.isPlatformOrg)) {
+    return res.status(403).json({ error: 'Forbidden: requires a Capital Book platform admin' });
+  }
+  const org = orgScope(req);
+  const orgAnd = action === 'assign_org' ? '' : (org.sql ? ` AND ${org.sql}` : '');
   const placeholders = parsed.data.ids.map(() => '?').join(',');
-  const ids = (await q<{ id: number }>(`SELECT id FROM contacts WHERE id IN (${placeholders})`, parsed.data.ids)).map((r) => r.id);
+  const ids = (await q<{ id: number }>(
+    `SELECT id FROM contacts WHERE id IN (${placeholders})${orgAnd}`,
+    action === 'assign_org' ? parsed.data.ids : [...parsed.data.ids, ...org.params]
+  )).map((r) => r.id);
   if (!ids.length) return res.status(404).json({ error: 'No matching contacts' });
   const uid = req.user!.uid;
   let affected = 0;
@@ -369,9 +407,24 @@ contactsRouter.post('/bulk', requireAuth, requireRole('editor'), async (req, res
     });
   } else if (action === 'assign') {
     const ownerId = parsed.data.ownerId ?? null;
-    if (ownerId != null && !(await one('SELECT id FROM users WHERE id = ?', [ownerId]))) return res.status(404).json({ error: 'Owner not found' });
+    if (ownerId != null) {
+      // Non-platform callers can only hand contacts to a teammate in their own
+      // org; platform callers keep today's unrestricted behavior.
+      const ownerWhere = req.user!.isPlatformOrg ? 'id = ?' : 'id = ? AND org_id = ?';
+      const ownerParams = req.user!.isPlatformOrg ? [ownerId] : [ownerId, req.user!.orgId];
+      if (!(await one(`SELECT id FROM users WHERE ${ownerWhere}`, ownerParams))) return res.status(404).json({ error: 'Owner not found' });
+    }
     await tx(async (conn) => {
       for (const id of ids) { await conn.query('UPDATE contacts SET owner_id = ? WHERE id = ?', [ownerId, id]); affected++; }
+    });
+  } else if (action === 'assign_org') {
+    const orgId = parsed.data.orgId;
+    if (orgId == null) return res.status(400).json({ error: 'orgId is required for assign_org action' });
+    if (!(await one('SELECT id FROM organizations WHERE id = ?', [orgId]))) return res.status(404).json({ error: 'Organization not found' });
+    await tx(async (conn) => {
+      // Moving a contact to a different org clears any owner assignment, since
+      // the previous owner may not even be a member of the new org.
+      for (const id of ids) { await conn.query('UPDATE contacts SET org_id = ?, owner_id = NULL WHERE id = ?', [orgId, id]); affected++; }
     });
   }
 
@@ -382,9 +435,13 @@ contactsRouter.post('/bulk', requireAuth, requireRole('editor'), async (req, res
 // PUT /api/contacts/:id/owner -> assign or clear the owner (editor or admin)
 contactsRouter.put('/:id/owner', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
-  if (!(await one('SELECT id FROM contacts WHERE id = ?', [id]))) return res.status(404).json({ error: 'Contact not found' });
+  if (!(await contactInOrg(req, id))) return res.status(404).json({ error: 'Contact not found' });
   const ownerId = req.body?.ownerId == null ? null : Number(req.body.ownerId);
-  if (ownerId != null && !(await one('SELECT id FROM users WHERE id = ?', [ownerId]))) return res.status(404).json({ error: 'Owner not found' });
+  if (ownerId != null) {
+    const ownerWhere = req.user!.isPlatformOrg ? 'id = ?' : 'id = ? AND org_id = ?';
+    const ownerParams = req.user!.isPlatformOrg ? [ownerId] : [ownerId, req.user!.orgId];
+    if (!(await one(`SELECT id FROM users WHERE ${ownerWhere}`, ownerParams))) return res.status(404).json({ error: 'Owner not found' });
+  }
   await run('UPDATE contacts SET owner_id = ? WHERE id = ?', [ownerId, id]);
   await writeAudit(req.user, 'assign', 'contact', id, { ownerId });
   const owner = ownerId ? await one('SELECT id, name, email FROM users WHERE id = ?', [ownerId]) : null;
@@ -395,7 +452,7 @@ contactsRouter.put('/:id/owner', requireAuth, requireRole('editor'), async (req,
 contactsRouter.get('/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   const c = await one<Record<string, any>>('SELECT * FROM contacts WHERE id = ?', [id]);
-  if (!c) return res.status(404).json({ error: 'Contact not found' });
+  if (!c || (!req.user!.isPlatformOrg && c.org_id !== req.user!.orgId)) return res.status(404).json({ error: 'Contact not found' });
   const pipe = (await one('SELECT contact_id, status, due, opp, poc, note, updated_at FROM pipeline WHERE contact_id = ? AND user_id = ?', [id, req.user!.uid])) || null;
   const tags = await q('SELECT t.id, t.name, t.color FROM tags t JOIN contact_tags ct ON ct.tag_id = t.id WHERE ct.contact_id = ? ORDER BY t.name', [id]);
   const owner = c.owner_id ? ((await one('SELECT id, name, email FROM users WHERE id = ?', [c.owner_id])) || null) : null;
@@ -476,6 +533,7 @@ const personSchema = z.object({
 
 contactsRouter.get('/:id/people', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
+  if (!(await contactInOrg(req, id))) return res.status(404).json({ error: 'Contact not found' });
   const people = await q(
     'SELECT id, contact_id, name, role, email, phone, created_at FROM contact_people WHERE contact_id = ? ORDER BY id',
     [id]
@@ -485,8 +543,7 @@ contactsRouter.get('/:id/people', requireAuth, async (req, res) => {
 
 contactsRouter.post('/:id/people', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
-  const contact = await one('SELECT id FROM contacts WHERE id = ?', [id]);
-  if (!contact) return res.status(404).json({ error: 'Contact not found' });
+  if (!(await contactInOrg(req, id))) return res.status(404).json({ error: 'Contact not found' });
   const parsed = personSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
   const { name, role, email, phone } = parsed.data;
@@ -501,7 +558,7 @@ contactsRouter.post('/:id/people', requireAuth, requireRole('editor'), async (re
 contactsRouter.patch('/:id/people/:pid', requireAuth, requireRole('editor'), async (req, res) => {
   const pid = Number(req.params.pid);
   const person = await one<{ id: number; contact_id: number }>('SELECT id, contact_id FROM contact_people WHERE id = ?', [pid]);
-  if (!person) return res.status(404).json({ error: 'Person not found' });
+  if (!person || !(await contactInOrg(req, person.contact_id))) return res.status(404).json({ error: 'Person not found' });
   const parsed = personSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
   const { name, role, email, phone } = parsed.data;
@@ -514,7 +571,7 @@ contactsRouter.patch('/:id/people/:pid', requireAuth, requireRole('editor'), asy
 contactsRouter.delete('/:id/people/:pid', requireAuth, requireRole('editor'), async (req, res) => {
   const pid = Number(req.params.pid);
   const person = await one<{ id: number; contact_id: number; name: string }>('SELECT id, contact_id, name FROM contact_people WHERE id = ?', [pid]);
-  if (!person) return res.status(404).json({ error: 'Person not found' });
+  if (!person || !(await contactInOrg(req, person.contact_id))) return res.status(404).json({ error: 'Person not found' });
   await run('DELETE FROM contact_people WHERE id = ?', [pid]);
   await writeAudit(req.user, 'person_remove', 'contact', person.contact_id, { person: person.name });
   return res.json({ ok: true });

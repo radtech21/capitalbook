@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { q } from '../db.js';
-import { requireAuth, requireRole } from '../auth.js';
+import { requireAuth, requireRole, orgScope } from '../auth.js';
 
 export const auditRouter = Router();
 
@@ -9,8 +9,12 @@ export const auditRouter = Router();
 // column used to render as e.g. "contact 1236" or "user 1". Resolve the real
 // name here via a per-entity-type join (one is null unless its type matches);
 // deleted rows fall back to the name captured in `detail` at write time.
+// A client org's admin only sees their own org's audit trail; the platform
+// org's admins see across every org, as before multi-org support.
 auditRouter.get('/', requireAuth, requireRole('admin'), async (req, res) => {
   const limit = Math.min(1000, Math.max(1, parseInt(String(req.query.limit || '100'), 10) || 100));
+  const org = orgScope(req, 'a.org_id');
+  const where = org.sql ? `WHERE ${org.sql}` : '';
   const rows = await q(
     `SELECT a.id, a.user_id, a.user_email, a.action, a.entity, a.entity_id, a.detail, a.created_at,
             c.name   AS contact_name,
@@ -26,7 +30,9 @@ auditRouter.get('/', requireAuth, requireRole('admin'), async (req, res) => {
      LEFT JOIN tags         tg ON a.entity = 'tag'      AND a.entity_id = CAST(tg.id AS CHAR)
      LEFT JOIN templates    tp ON a.entity = 'template' AND a.entity_id = CAST(tp.id AS CHAR)
      LEFT JOIN saved_views  v  ON a.entity = 'view'     AND a.entity_id = CAST(v.id  AS CHAR)
-     ORDER BY a.id DESC LIMIT ${limit}`
+     ${where}
+     ORDER BY a.id DESC LIMIT ${limit}`,
+    org.params
   );
   return res.json({ audit: rows });
 });

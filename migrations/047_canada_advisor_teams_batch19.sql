@@ -79,7 +79,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1255)
 -- 1708 Pedro Ribeiro, Raymond James (Marnoa Private Wealth Counsel), Waterloo, ON
 UPDATE contacts SET
   address = '20 Erb Street West, Suite 1001',
-  data_flags = TRIM(CONCAT(data_flags, ' | Team rebranded from "The Fountain Group" to "Marnoa Private Wealth Counsel" — still Raymond James, not a departure.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Team rebranded from "The Fountain Group" to "Marnoa Private Wealth Counsel" — still Raymond James, not a departure.')), 512)
 WHERE id = 1708;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1708, x.name, x.role FROM (
@@ -126,8 +126,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1487)
 UPDATE contacts SET
   firm = 'Q Wealth (Quintessence Wealth) — Camaco Capital Management',
   address = '4105 - 230 Eversyde Blvd SW',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'LIKELY MOVED from IPC Securities Corporation to a Q Wealth/Quintessence Wealth partnership, now operating as Camaco Capital Management — inferred circumstantially from a related team member''s @ipcc.org email domain rather than a direct announcement; web search budget was exhausted mid-research, verify before outreach.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'LIKELY MOVED from IPC Securities Corporation to a Q Wealth/Quintessence Wealth partnership, now operating as Camaco Capital Management — inferred circumstantially from a related team member''s @ipcc.org email domain rather than a direct announcement; web search budget was exhausted mid-research, verify before outreach.')), 512)
 WHERE id = 1672;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1672, x.name, x.role FROM (
@@ -146,7 +146,7 @@ UPDATE contacts SET address = '540 Cawston Ave, 1st Floor' WHERE id = 1669;
 UPDATE contacts SET
   firm = 'Richardson Wealth',
   address = '2950 Jutland Road, Suite 400',
-  data_flags = TRIM(CONCAT(data_flags, ' | Merged practice with Dan Greco (~2023) and moved from IG Private Wealth Management to Richardson Wealth, forming "Lalli Greco Wealth Management" — old IG-branded site is stale.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Merged practice with Dan Greco (~2023) and moved from IG Private Wealth Management to Richardson Wealth, forming "Lalli Greco Wealth Management" — old IG-branded site is stale.')), 512)
 WHERE id = 1294;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1294, x.name, x.role FROM (
@@ -168,7 +168,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1314)
 -- 1667 Midori Hillis, IPC Securities, Victoria/View Royal, BC
 UPDATE contacts SET
   address = '#108 - 284 Helmcken Rd',
-  data_flags = TRIM(CONCAT(data_flags, ' | Office relocated Jan 2023 from Royal Oak Shopping Centre to View Royal; web search budget was exhausted mid-research, team roster is lower confidence.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Office relocated Jan 2023 from Royal Oak Shopping Centre to View Royal; web search budget was exhausted mid-research, team roster is lower confidence.')), 512)
 WHERE id = 1667;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1667, x.name, x.role FROM (
@@ -188,7 +188,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1668)
 
 -- 1320 Jeanette Boleantu, Assante Wealth Management (Marda Loop Financial Group), Calgary, AB (no address found; team only)
 UPDATE contacts SET
-  data_flags = TRIM(CONCAT(data_flags, ' | No confirmed street address found; web search budget was exhausted mid-research.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | No confirmed street address found; web search budget was exhausted mid-research.')), 512)
 WHERE id = 1320;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1320, x.name, x.role FROM (

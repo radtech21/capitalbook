@@ -47,8 +47,8 @@ UPDATE contacts SET
   firm = 'Scotia Wealth Management (ScotiaMcLeod) — Jacques Maurice Group',
   title = 'Senior Wealth Advisor and Director, Wealth Management',
   address = '1002, rue Sherbrooke Ouest, 3e étage, bureau 300',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff — team AUM matches the CRM figure almost exactly. Note: a 2019 CIRO/IIROC enforcement/settlement record exists for this individual — relevant for compliance review.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff — team AUM matches the CRM figure almost exactly. Note: a 2019 CIRO/IIROC enforcement/settlement record exists for this individual — relevant for compliance review.')), 512)
 WHERE id = 1858;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1858, x.name, x.role FROM (
@@ -64,7 +64,7 @@ UPDATE contacts SET
   firm = 'CIBC Wood Gundy — Carmosino Wealth Management',
   title = 'Vice President, Investment Advisor / Portfolio Manager',
   address = '1250 René-Lévesque Blvd West, Suite 3100',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1849;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1849, x.name, x.role FROM (
@@ -78,7 +78,7 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Vo-Dignard Provost Group',
   title = 'Senior Wealth Advisor & Portfolio Manager (Senior VP)',
   address = '1 Place Ville-Marie, Suite 1700',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this NBF flagship building/suite with several other independent teams identified this batch.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this NBF flagship building/suite with several other independent teams identified this batch.')), 512)
 WHERE id = 1833;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1833, x.name, x.role FROM (
@@ -93,8 +93,8 @@ UPDATE contacts SET
   firm = 'BMO Nesbitt Burns (BMO Private Wealth) — Anderson Laurin Investment Management',
   title = 'Senior Portfolio Manager, Investment Advisor',
   address = '1501 McGill College Avenue, Suite 3200',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Only credible "Catherine Laurin" in QC finance is this BMO retail/private-wealth Senior Portfolio Manager — no CDPQ/PSP/CPPIB connection found, so the pension/institutional sourcing is unresolved; treat as plausible but not fully confirmed.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Only credible "Catherine Laurin" in QC finance is this BMO retail/private-wealth Senior Portfolio Manager — no CDPQ/PSP/CPPIB connection found, so the pension/institutional sourcing is unresolved; treat as plausible but not fully confirmed.')), 512)
 WHERE id = 1842;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1842, x.name, x.role FROM (
@@ -108,8 +108,8 @@ UPDATE contacts SET
   firm = 'Scotia Wealth Management (ScotiaMcLeod) — Lambert Sakkas Marsh',
   title = 'Portfolio Manager, Senior Wealth Advisor (CFA)',
   address = '1002 Sherbrooke St. West, Suite 650',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Team AUM (~$2.7B reported) close to the CRM figure supports a retail wealth-team match, not pension staff. Team page could not be directly fetched; roster from search snippets only. Team appears rebranded from "Lambert, Klimis, Sakkas & Marsh" — Klimis may have departed.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Team AUM (~$2.7B reported) close to the CRM figure supports a retail wealth-team match, not pension staff. Team page could not be directly fetched; roster from search snippets only. Team appears rebranded from "Lambert, Klimis, Sakkas & Marsh" — Klimis may have departed.')), 512)
 WHERE id = 1854;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1854, x.name, x.role FROM (
@@ -125,7 +125,7 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Groupe Financier Brunet Gilbert Paquet',
   title = 'Senior Wealth Advisor & Portfolio Manager',
   address = '500 Grande Allée Est, Bureau 400',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Same team as 1876 Sophie Paquet — cross-confirmed by both agents.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Same team as 1876 Sophie Paquet — cross-confirmed by both agents.')), 512)
 WHERE id = 1830;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1830, x.name, x.role FROM (
@@ -145,7 +145,7 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Groupe Financier Brunet Gilbert Paquet',
   title = 'Senior Wealth Advisor / Investment Advisor, Portfolio Manager, VP',
   address = '500 Grande Allée Est, Bureau 400',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Same team as 1830 Richard Brunet — cross-confirmed by both agents.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Same team as 1830 Richard Brunet — cross-confirmed by both agents.')), 512)
 WHERE id = 1876;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1876, x.name, x.role FROM (
@@ -165,8 +165,8 @@ UPDATE contacts SET
   firm = 'BGY Services Financiers Intégrés / iA Private Wealth',
   title = 'Portfolio Manager / Associate (CFA)',
   address = '1411, rue Peel, Bureau 500',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Wealth Professional 5-Star Advisor with a book trending toward the CRM AUM figure supports a retail wealth-advisor match, not pension staff. Confirmed UNRELATED to 1828 Jean Poliquin (different firm, coincidental surname). Firm-level Montreal address, not confirmed as his specific desk; firm also has a Quebec City HQ office.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Wealth Professional 5-Star Advisor with a book trending toward the CRM AUM figure supports a retail wealth-advisor match, not pension staff. Confirmed UNRELATED to 1828 Jean Poliquin (different firm, coincidental surname). Firm-level Montreal address, not confirmed as his specific desk; firm also has a Quebec City HQ office.')), 512)
 WHERE id = 1827;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1827, x.name, x.role FROM (
@@ -181,7 +181,7 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Parent-Bujold Wealth Management',
   title = 'Senior Wealth Advisor & Portfolio Manager (SVP)',
   address = '1802, rue King Ouest, Bureau 200',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; only credible namesake in Quebec finance, no pension-fund connection found — identified as a retail wealth advisor, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; only credible namesake in Quebec finance, no pension-fund connection found — identified as a retail wealth advisor, not pension staff.')), 512)
 WHERE id = 1840;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1840, x.name, x.role FROM (
@@ -197,8 +197,8 @@ UPDATE contacts SET
   firm = 'National Bank Financial Wealth Management — Lalonde-Doyon Group',
   title = 'Senior Wealth Advisor & Portfolio Manager',
   address = '1 Place Ville-Marie, Suite 1700',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. No institutional/pension "Daniel Lalonde" found in Quebec; ruled out an unrelated fashion-retail executive of the same name. Shares this NBF flagship building/suite with several other independent teams identified this batch.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. No institutional/pension "Daniel Lalonde" found in Quebec; ruled out an unrelated fashion-retail executive of the same name. Shares this NBF flagship building/suite with several other independent teams identified this batch.')), 512)
 WHERE id = 1848;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1848, x.name, x.role FROM (
@@ -214,7 +214,7 @@ UPDATE contacts SET
   firm = 'National Bank Financial Wealth Management — Groupe Pouliot Jarry Verreault',
   title = 'Portfolio Manager & Senior Wealth Advisor',
   address = '2600 Boulevard Laurier, Place de la Cité, Bureau 700',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; ruled out an unrelated iA Financial insurance executive of the same name. Retail wealth-advisor match, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; ruled out an unrelated iA Financial insurance executive of the same name. Retail wealth-advisor match, not pension staff.')), 512)
 WHERE id = 1829;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1829, x.name, x.role FROM (
@@ -230,7 +230,7 @@ UPDATE contacts SET
   firm = 'Valeurs mobilières Desjardins — Équipe Leblanc Martineau St-Hilaire L''Heureux',
   title = 'Investment Advisor & Portfolio Manager',
   address = '1170, rue Peel, Bureau 300',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; team AUM aligns closely, ruled out a journalist and an unrelated deceased namesake. Retail wealth-advisor match, not pension staff.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; team AUM aligns closely, ruled out a journalist and an unrelated deceased namesake. Retail wealth-advisor match, not pension staff.')), 512)
 WHERE id = 1878;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1878, x.name, x.role FROM (
@@ -246,8 +246,8 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Groupe conseil Poliquin Marquette Charlebois Gervais',
   title = 'Senior Wealth Advisor & Portfolio Manager',
   address = '7200, rue Marion (National Bank Financial branch)',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. 30+ year NBF career, only Jean Poliquin found active in QC finance. Confirmed UNRELATED to 1827 David Poliquin (different firm, coincidental surname). Branch-level address; suite number not confirmed.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. 30+ year NBF career, only Jean Poliquin found active in QC finance. Confirmed UNRELATED to 1827 David Poliquin (different firm, coincidental surname). Branch-level address; suite number not confirmed.')), 512)
 WHERE id = 1828;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1828, x.name, x.role FROM (
@@ -263,7 +263,7 @@ UPDATE contacts SET
   firm = 'BMO Nesbitt Burns (BMO Private Wealth) — Zukor Investment Group',
   title = 'Portfolio Manager / Investment Advisor (CIM, CPA, CA)',
   address = '1501 av. McGill College, Suite 3200',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares the same building as 1842 Catherine Laurin''s BMO team — different suite/team, independent.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares the same building as 1842 Catherine Laurin''s BMO team — different suite/team, independent.')), 512)
 WHERE id = 1867;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1867, x.name, x.role FROM (
@@ -277,7 +277,7 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Compagnat Reise Group',
   title = 'Senior Wealth Advisor & Portfolio Manager',
   address = '1 Place Ville-Marie, Suite 1700',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this NBF flagship building/suite with several other independent teams identified this batch.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; identified via web research as a retail wealth advisor, not pension staff. Shares this NBF flagship building/suite with several other independent teams identified this batch.')), 512)
 WHERE id = 1879;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1879, x.name, x.role FROM (
@@ -291,8 +291,8 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Dalpé Wealth Partners',
   title = 'Senior Wealth Advisor / Senior Portfolio Manager',
   address = '9001 boul. de l''Acadie, Bureau 802',
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Well-known advisor who moved his ~10-person team (~$900M book) from Richardson Wealth to National Bank Financial in 2024/2025 — retail wealth advisor, not pension staff. Address moderately confirmed; a second downtown NBF location could not be fully ruled out.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'CRM listed no firm and sourced this record from a "Global Pension & Institutional" list. Well-known advisor who moved his ~10-person team (~$900M book) from Richardson Wealth to National Bank Financial in 2024/2025 — retail wealth advisor, not pension staff. Address moderately confirmed; a second downtown NBF location could not be fully ruled out.')), 512)
 WHERE id = 1866;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1866, x.name, x.role FROM (
@@ -307,7 +307,7 @@ UPDATE contacts SET
   firm = 'National Bank Financial – Wealth Management — Family Wealth Management Schulman Group',
   title = 'Senior Wealth Advisor & Portfolio Manager (CIM)',
   address = '1 Place Ville-Marie, Suite 1700',
-  data_flags = TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; award-winning practice, no CDPQ/pension connection found. Shares this NBF flagship building/suite with several other independent teams identified this batch.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | CRM listed no firm and sourced this record from a "Global Pension & Institutional" list; award-winning practice, no CDPQ/pension connection found. Shares this NBF flagship building/suite with several other independent teams identified this batch.')), 512)
 WHERE id = 1871;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1871, x.name, x.role FROM (
@@ -321,6 +321,6 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1871)
 
 -- 1856 Guy Cote (Guy Côté) — NOT CONFIRMED, flag only, no firm/address applied.
 UPDATE contacts SET
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'Could not confirm: the only substantive same-named lead is "Guy Côté Integrated Wealth Management," a retail wealth team at National Bank Financial (1 Place Ville-Marie, Suite 1700, Montreal — same building as several other confirmed matches this batch), but the name is common and no pension/institutional connection or corroborating detail was found to confirm this is the same person. Unverified lead only.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'Could not confirm: the only substantive same-named lead is "Guy Côté Integrated Wealth Management," a retail wealth team at National Bank Financial (1 Place Ville-Marie, Suite 1700, Montreal — same building as several other confirmed matches this batch), but the name is common and no pension/institutional connection or corroborating detail was found to confirm this is the same person. Unverified lead only.')), 512)
 WHERE id = 1856;

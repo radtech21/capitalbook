@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { q, one, run } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { contactInOrg } from './contacts.js';
 
 export const tasksRouter = Router();
 
@@ -50,7 +51,7 @@ tasksRouter.post('/', requireAuth, requireRole('editor'), async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
   const { contact_id = null, title, due = null } = parsed.data;
-  if (contact_id != null && !(await one('SELECT id FROM contacts WHERE id = ?', [contact_id]))) return res.status(404).json({ error: 'Contact not found' });
+  if (contact_id != null && !(await contactInOrg(req, contact_id))) return res.status(404).json({ error: 'Contact not found' });
   const info = await run('INSERT INTO tasks (contact_id, user_id, title, due) VALUES (?, ?, ?, ?)', [contact_id, req.user!.uid, title, due]);
   await writeAudit(req.user, 'task_create', 'task', info.insertId, { contact_id, title });
   const row = await one('SELECT id, contact_id, title, due, done, created_at, completed_at FROM tasks WHERE id = ?', [info.insertId]);

@@ -221,8 +221,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1258)
 -- of file: confirmed deceased June 2026, needs a human decision.
 UPDATE contacts
 SET reachable = 0,
-    data_flags = TRIM(CONCAT(COALESCE(data_flags, ''),
+    data_flags = LEFT(TRIM(CONCAT(COALESCE(data_flags, ''),
       CASE WHEN COALESCE(data_flags, '') = '' THEN '' ELSE ' | ' END,
-      'DECEASED (per Wellington-Altus official statement, June 19, 2026). Team "Baun & Pate Investment Group" rebranded to "Aspire Wealth Partners" (Aug 2025) continues under co-lead Michael Pate — needs human decision: archive this contact and/or add Michael Pate as a new contact.'))
+      'DECEASED (per Wellington-Altus official statement, June 19, 2026). Team "Baun & Pate Investment Group" rebranded to "Aspire Wealth Partners" (Aug 2025) continues under co-lead Michael Pate — needs human decision: archive this contact and/or add Michael Pate as a new contact.')), 512)
 WHERE id = 1267
   AND data_flags NOT LIKE '%DECEASED%';

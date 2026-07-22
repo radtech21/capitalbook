@@ -40,7 +40,7 @@
 -- 1446 Cary Pinkowski, CG Wealth Management (Pinkowski Group), Vancouver, BC
 UPDATE contacts SET
   address = '1133 Melville St., Suite 1200',
-  data_flags = TRIM(CONCAT(data_flags, ' | AUM identical to 1463 Lori Pinkowski (separate practice, same office) — likely source-data artifact, verify AUM.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | AUM identical to 1463 Lori Pinkowski (separate practice, same office) — likely source-data artifact, verify AUM.')), 512)
 WHERE id = 1446;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1446, x.name, x.role FROM (
@@ -53,7 +53,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1446)
 -- 1463 Lori Pinkowski, CG Wealth Management (Lori Pinkowski Wealth Management), Vancouver, BC
 UPDATE contacts SET
   address = '1133 Melville St., Suite 1200',
-  data_flags = TRIM(CONCAT(data_flags, ' | AUM identical to 1446 Cary Pinkowski (separate practice, same office) — likely source-data artifact, verify AUM.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | AUM identical to 1446 Cary Pinkowski (separate practice, same office) — likely source-data artifact, verify AUM.')), 512)
 WHERE id = 1463;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1463, x.name, x.role FROM (
@@ -70,7 +70,7 @@ UPDATE contacts SET
   firm = 'NBF Wealth Management',
   address = 'Suite 3810, 855 2nd Street SW',
   email = 'brad.gustafson@nbc.ca',
-  data_flags = TRIM(CONCAT(data_flags, ' | Left Richardson Wealth for NBF Wealth Management, Calgary, April 2026 — "Gustafson Lienau Advisory Group." Firm, address, and email updated accordingly (old Richardson email stale).'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Left Richardson Wealth for NBF Wealth Management, Calgary, April 2026 — "Gustafson Lienau Advisory Group." Firm, address, and email updated accordingly (old Richardson email stale).')), 512)
 WHERE id = 1355;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1355, x.name, x.role FROM (
@@ -123,7 +123,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1385)
 -- 1673 Ethan Astaneh, Nicola Wealth, Vancouver, BC (address + weak internal-role signal)
 UPDATE contacts SET
   address = 'Suite 500, 1508 West Broadway',
-  data_flags = TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: title now "Head of Practice Management and Advisor Enablement" (internal leadership role at Nicola Wealth) — may no longer be client-facing; needs manual verification.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | WEAK SIGNAL: title now "Head of Practice Management and Advisor Enablement" (internal leadership role at Nicola Wealth) — may no longer be client-facing; needs manual verification.')), 512)
 WHERE id = 1673;
 
 -- 1324 Steve Willems, Assante Wealth Management (Willems Wealth Planning Group), Abbotsford, BC
@@ -214,8 +214,8 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1300)
 -- (Jeremy Hampson / Olivier Brasseur, KHB Capital) is a human decision.
 UPDATE contacts SET
   reachable = 0,
-  data_flags = TRIM(CONCAT(data_flags, ' | ',
-    'RETIRED (by Dec 2025, after 42 years — Globe and Mail, Jan 21, 2026). Practice rebranded "KHB Capital" under partners Jeremy Hampson and Olivier Brasseur (CI Assante), 2020 Trans-Canada Highway, Suite 200, Dorval — needs human decision on whether/how to add a successor contact.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | ',
+    'RETIRED (by Dec 2025, after 42 years — Globe and Mail, Jan 21, 2026). Practice rebranded "KHB Capital" under partners Jeremy Hampson and Olivier Brasseur (CI Assante), 2020 Trans-Canada Highway, Suite 200, Dorval — needs human decision on whether/how to add a successor contact.')), 512)
 WHERE id = 1325;
 
 -- 1732 Kim Mailey, ScotiaMcLeod (Mailey Rogers Group), West Vancouver, BC

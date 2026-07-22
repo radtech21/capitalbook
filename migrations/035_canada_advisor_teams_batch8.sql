@@ -111,7 +111,7 @@ WHERE EXISTS (SELECT 1 FROM contacts WHERE id = 1799)
 UPDATE contacts SET
   firm = 'Wellington-Altus Private Wealth',
   address = '410-22nd St. East, Suite 1100',
-  data_flags = TRIM(CONCAT(data_flags, ' | Left ScotiaMcLeod for Wellington-Altus Private Wealth, Saskatoon, ~April 2026, with colleague Terry Shaw — "Shaw Sherdahl Wealth Management Group." Firm field updated accordingly. Other ex-ScotiaMcLeod colleagues (Nerasha Pather, Frieda Gesiorowski) not confirmed to have moved with him.'))
+  data_flags = LEFT(TRIM(CONCAT(data_flags, ' | Left ScotiaMcLeod for Wellington-Altus Private Wealth, Saskatoon, ~April 2026, with colleague Terry Shaw — "Shaw Sherdahl Wealth Management Group." Firm field updated accordingly. Other ex-ScotiaMcLeod colleagues (Nerasha Pather, Frieda Gesiorowski) not confirmed to have moved with him.')), 512)
 WHERE id = 1727;
 INSERT INTO contact_people (contact_id, name, role)
 SELECT 1727, 'Terry Shaw', 'Senior Wealth Advisor and Portfolio Manager (CIM)'

@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { q, one, run } from '../db.js';
-import { requireAuth, requireRole } from '../auth.js';
+import { requireAuth, requireRole, orgScope } from '../auth.js';
 import { writeAudit } from '../audit.js';
+import { contactInOrg } from './contacts.js';
 
 export const templatesRouter = Router();
 
@@ -28,8 +29,10 @@ function render(text: string, fields: Record<string, string>): string {
   });
 }
 
-templatesRouter.get('/', requireAuth, async (_req, res) => {
-  const rows = await q('SELECT id, name, subject, body, created_by, created_at FROM templates ORDER BY name');
+templatesRouter.get('/', requireAuth, async (req, res) => {
+  const org = orgScope(req, 'org_id');
+  const where = org.sql ? `WHERE ${org.sql}` : '';
+  const rows = await q(`SELECT id, name, subject, body, created_by, created_at FROM templates ${where} ORDER BY name`, org.params);
   return res.json({ templates: rows });
 });
 
@@ -37,7 +40,7 @@ templatesRouter.post('/', requireAuth, requireRole('editor'), async (req, res) =
   const parsed = tplSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
   const { name, subject, body } = parsed.data;
-  const info = await run('INSERT INTO templates (name, subject, body, created_by) VALUES (?, ?, ?, ?)', [name.trim(), subject, body, req.user!.uid]);
+  const info = await run('INSERT INTO templates (name, subject, body, created_by, org_id) VALUES (?, ?, ?, ?, ?)', [name.trim(), subject, body, req.user!.uid, req.user!.orgId]);
   await writeAudit(req.user, 'template_create', 'template', info.insertId, { name });
   return res.status(201).json({ template: await one('SELECT id, name, subject, body FROM templates WHERE id = ?', [info.insertId]) });
 });
@@ -45,7 +48,7 @@ templatesRouter.post('/', requireAuth, requireRole('editor'), async (req, res) =
 templatesRouter.patch('/:id', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
   const existing = await one<any>('SELECT * FROM templates WHERE id = ?', [id]);
-  if (!existing) return res.status(404).json({ error: 'Template not found' });
+  if (!existing || (!req.user!.isPlatformOrg && existing.org_id !== req.user!.orgId)) return res.status(404).json({ error: 'Template not found' });
   const parsed = tplSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const name = parsed.data.name ?? existing.name;
@@ -58,8 +61,8 @@ templatesRouter.patch('/:id', requireAuth, requireRole('editor'), async (req, re
 
 templatesRouter.delete('/:id', requireAuth, requireRole('editor'), async (req, res) => {
   const id = Number(req.params.id);
-  const row = await one<{ created_by: number; name: string }>('SELECT created_by, name FROM templates WHERE id = ?', [id]);
-  if (!row) return res.status(404).json({ error: 'Template not found' });
+  const row = await one<{ created_by: number; name: string; org_id: number }>('SELECT created_by, name, org_id FROM templates WHERE id = ?', [id]);
+  if (!row || (!req.user!.isPlatformOrg && row.org_id !== req.user!.orgId)) return res.status(404).json({ error: 'Template not found' });
   if (row.created_by !== req.user!.uid && req.user!.role !== 'admin') return res.status(403).json({ error: 'Only the author or an admin can delete this' });
   await run('DELETE FROM templates WHERE id = ?', [id]);
   await writeAudit(req.user, 'template_delete', 'template', id, { name: row.name });
@@ -69,11 +72,11 @@ templatesRouter.delete('/:id', requireAuth, requireRole('editor'), async (req, r
 // POST /api/templates/:id/render  body { contactId } -> merged subject/body for that contact
 templatesRouter.post('/:id/render', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const tpl = await one<{ name: string; subject: string; body: string }>('SELECT name, subject, body FROM templates WHERE id = ?', [id]);
-  if (!tpl) return res.status(404).json({ error: 'Template not found' });
+  const tpl = await one<{ name: string; subject: string; body: string; org_id: number }>('SELECT name, subject, body, org_id FROM templates WHERE id = ?', [id]);
+  if (!tpl || (!req.user!.isPlatformOrg && tpl.org_id !== req.user!.orgId)) return res.status(404).json({ error: 'Template not found' });
   const contactId = Number(req.body?.contactId);
+  if (!(await contactInOrg(req, contactId))) return res.status(404).json({ error: 'Contact not found' });
   const c = await one<Record<string, any>>('SELECT * FROM contacts WHERE id = ?', [contactId]);
-  if (!c) return res.status(404).json({ error: 'Contact not found' });
-  const fields = mergeFields(c);
-  return res.json({ to: c.email || '', subject: render(tpl.subject, fields), body: render(tpl.body, fields) });
+  const fields = mergeFields(c!);
+  return res.json({ to: c!.email || '', subject: render(tpl.subject, fields), body: render(tpl.body, fields) });
 });
